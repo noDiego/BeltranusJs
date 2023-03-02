@@ -2,7 +2,7 @@ import { ChatGTP } from './chatgpt';
 import { PostgresClient } from './database/postgresql';
 import { Chat, Message } from 'whatsapp-web.js';
 import { getMsgData, handleError, logMessage, tienePrefix } from './utils';
-import { PromptName } from './interfaces/chatinfo';
+import { GrupoName, PromptName } from './interfaces/chatinfo';
 
 const prefixWenchotino = 'wenchotino';
 const prefixBel = 'bel';
@@ -22,17 +22,24 @@ export class Beltranus {
 
   public async readMessage(message: Message) {
     try {
-      const esWenchotino = tienePrefix(message.body, prefixWenchotino);
-      const esBel = tienePrefix(message.body, prefixBel);
-      const esRoboto = tienePrefix(message.body, prefixRoboto);
+      let   esWenchotino = tienePrefix(message.body, prefixWenchotino);
+      let   esBel = tienePrefix(message.body, prefixBel);
+      let   esRoboto = tienePrefix(message.body, prefixRoboto);
+
       const tieneCommand = message.body.substring(0, 3) == this.commandPrefix+'a ';
-
-      if(!esWenchotino && !esBel && !esRoboto) return;
-
-      const prompt: PromptName = this.getPrompt(message.body);
+      let   prompt: PromptName = this.getPrompt(message.body);
 
       const chatData: Chat = await message.getChat();
       const quotedMessage = await message.getQuotedMessage();
+
+
+      if(quotedMessage?.fromMe && (chatData.name == GrupoName.FAMILIA || chatData.name == GrupoName.TEST)){
+        esBel = true;
+        prompt = PromptName.BELTRANUS;
+      }
+
+      if(!esWenchotino && !esBel && !esRoboto) return;
+
       let messageContent = '';
       let contactInfo;
 

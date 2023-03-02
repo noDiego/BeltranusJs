@@ -37,7 +37,7 @@ export class PostgresClient {
                    FROM wenchotino.chats_cfg p
                             LEFT JOIN wenchotino.messages m ON p.conversation_id = m.conversation_id
                    WHERE p.prompt_name = $1
-                   ORDER BY m.created_at ASC
+                   ORDER BY m.created_at DESC
                    LIMIT $2;`;
     const params = [prompt_name, limit?limit: MSGS_LIMIT];
     const rows = await this.query(query, params);

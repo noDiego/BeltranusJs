@@ -32,3 +32,8 @@ export enum PromptName {
   CHATGPT = 'chatgpt',
   BELTRANUS = 'beltranus'
 }
+
+export enum GrupoName {
+  FAMILIA = 'Familia B&G',
+  TEST = 'Test 5'
+}
