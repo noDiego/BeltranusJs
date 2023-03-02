@@ -1,13 +1,13 @@
 import { ChatGTP } from './chatgpt';
 import { PostgresClient } from './database/postgresql';
 import { Chat, Message } from 'whatsapp-web.js';
-import { getMsgData, handleError, logMessage } from './utils';
+import { getMsgData, handleError, logMessage, tienePrefix } from './utils';
 import { PromptName } from './interfaces/chatinfo';
 import logger from './logger';
 
 export class Beltranus {
 
-  private prefix = 'bot';
+  private prefix = 'bel';
   private commandPrefix = '-';
   private chatGpt: ChatGTP;
   private busy = false;
@@ -24,7 +24,7 @@ export class Beltranus {
       let messageContent = '';
       let contactInfo;
 
-      const tienePrefix = message.body.substring(0, 4).toLowerCase() == `${this.prefix} ` || message.body.includes(` ${this.prefix} `);
+      const tieneNombre = tienePrefix(message.body.toLowerCase(), this.prefix.toLowerCase());
 
       const tieneCommandPrefix = message.body.substring(0, 1) == this.commandPrefix;
       const meResponden = message.hasQuotedMsg && quotedMessage.fromMe;
@@ -34,8 +34,8 @@ export class Beltranus {
         const {command, content} = getMsgData(message);
         contactInfo = await message.getContact();
         return this.commandSelect(message, command, contactInfo.name || 'Alguien');
-      } else if (meResponden || (esGrupo && tienePrefix)) {
-        messageContent = tienePrefix ? message.body.slice(4) : message.body;
+      } else if (meResponden || (esGrupo && tieneNombre)) {
+        messageContent = tieneNombre ? message.body.slice(4) : message.body;
       } else if (esGrupo) return true;
       else {
         messageContent = message.body;
@@ -58,7 +58,7 @@ export class Beltranus {
     let mensajeParaBot = messageContent;
 
     /** Se obtienen datos de Prompt **/
-    let promptInfo = await this.db.loadChatInfo(PromptName.BELTRANUS, 70);
+    let promptInfo = await this.db.loadChatInfo(PromptName.BELTRANUS, 30);
 
     /**Enviando mensaje y obteniendo respuesta */
     const responseChat = await this.chatGpt.sendMessage(contactName, mensajeParaBot, promptInfo);

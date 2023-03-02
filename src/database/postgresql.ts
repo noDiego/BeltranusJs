@@ -10,7 +10,7 @@ const config = {
   database: process.env.PSQL_DB
 }
 
-const MSGS_LIMIT = 40;
+const MSGS_LIMIT = 15;
 
 export class PostgresClient {
   private client: Client;
