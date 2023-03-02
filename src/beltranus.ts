@@ -7,7 +7,7 @@ import logger from './logger';
 
 export class Beltranus {
 
-  private prefix = 'bot ';
+  private prefix = 'bot';
   private commandPrefix = '-';
   private chatGpt: ChatGTP;
   private busy = false;
@@ -24,7 +24,8 @@ export class Beltranus {
       let messageContent = '';
       let contactInfo;
 
-      const tienePrefix = message.body.substring(0, 4).toLowerCase() == this.prefix;
+      const tienePrefix = message.body.substring(0, 4).toLowerCase() == `${this.prefix} ` || message.body.includes(` ${this.prefix} `);
+
       const tieneCommandPrefix = message.body.substring(0, 1) == this.commandPrefix;
       const meResponden = message.hasQuotedMsg && quotedMessage.fromMe;
       const esGrupo = chatData.isGroup;
@@ -43,7 +44,9 @@ export class Beltranus {
       logMessage(message, chatData);
 
       contactInfo = await message.getContact();
+      chatData.sendStateTyping();
       await this.chatGPTReply(message, messageContent, contactInfo.name || 'Alguien');
+      chatData.clearState();
       return true;
     } catch (e) {
       handleError(e, message);
