@@ -33,7 +33,7 @@ export class PostgresClient {
   }
 
   public async loadChatInfo(prompt_name: PromptName, limit?): Promise<Chatinfo> {
-    const query = `SELECT p.prompt_name, p.conversation_id, p.lastmessage_id, p.prompt_text, p.gif_url, m.role, m.message_text, m.name
+    const query = `SELECT p.prompt_name, p.conversation_id, p.lastmessage_id, p.prompt_text, p.gif_url, m.role, m.message_text, m.name, m.created_at
                    FROM wenchotino.chats_cfg p
                             LEFT JOIN wenchotino.messages m ON p.conversation_id = m.conversation_id
                    WHERE p.prompt_name = $1
@@ -49,9 +49,13 @@ export class PostgresClient {
       messages.push({
         name: row.name,
         message_text: row.message_text,
-        role: row.role}
+        role: row.role,
+        created_at: <string>row.created_at
+      }
       )
     }
+
+    messages.sort( (a,b) => new Date(<string>a.created_at).getTime() - new Date(<string>b.created_at).getTime())
 
     return {
       conversation_id: rows[0].conversation_id,

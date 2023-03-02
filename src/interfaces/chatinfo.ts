@@ -13,6 +13,7 @@ export interface GPTMessage{
   name: string;
   conversation_id?: string;
   message_text: string;
+  created_at?: string;
 }
 
 export enum GPTRol{
@@ -24,8 +25,10 @@ export enum GPTRol{
 export enum PromptName {
   GANDALF = 'gandalf',
   DEFAULT = 'default',
+  WENCHOTINO = 'wenchotino',
+  ROBOTO = 'roboto',
   CAIN = 'deckardcain',
   DAN = 'dan',
   CHATGPT = 'chatgpt',
-  BELTRANUS = 'beltranus',
+  BELTRANUS = 'beltranus'
 }

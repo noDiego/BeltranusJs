@@ -17,7 +17,7 @@ export function logMessage(message: Message, chat: Chat){
     msg: message.body
   };
   logger.info(
-    `{ chatUser:${msgObj.chatUser}, isGroup:${chat.isGroup}, author:'${msgObj.author}', date:'${msgObj.date.toLocaleDateString()}-${msgObj.date.toLocaleTimeString()}', msg:'${msgObj.msg}' }`
+    `{ chatUser:${msgObj.chatUser}, isGroup:${chat.isGroup}, grId:${chat.id._serialized}, grName:${chat.name}, author:'${msgObj.author}', date:'${msgObj.date.toLocaleDateString()}-${msgObj.date.toLocaleTimeString()}', msg:'${msgObj.msg}' }`
   );
 }
 
@@ -25,8 +25,7 @@ export function handleError(e: any, message: Message){
   logger.error(e.message);
 }
 
-export function tienePrefix(bodyMessage: string, prefix: string): boolean{
-  const comienzaCon = bodyMessage.substring(0, 4).toLowerCase() == `${prefix} ` || bodyMessage.substring(0, 4).toLowerCase() == `${prefix},` || bodyMessage.substring(0, 4).toLowerCase() == `${prefix}.`;
-  const contiene = bodyMessage.includes(` ${prefix} `) || bodyMessage.includes(` ${prefix},`) || bodyMessage.includes(` ${prefix}.`) || bodyMessage.includes(` ${prefix}!`) || bodyMessage.includes(` ${prefix}?`);
-  return comienzaCon || contiene;
+export function tienePrefix(bodyMessage: string, prefix: string): boolean {
+  const regex = new RegExp(`(^|\\s)${prefix}($|[!?.]|\\s|,\\s)`, 'i');
+  return regex.test(bodyMessage);
 }
