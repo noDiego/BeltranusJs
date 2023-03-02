@@ -27,6 +27,6 @@ export function handleError(e: any, message: Message){
 
 export function tienePrefix(bodyMessage: string, prefix: string): boolean{
   const comienzaCon = bodyMessage.substring(0, 4).toLowerCase() == `${prefix} ` || bodyMessage.substring(0, 4).toLowerCase() == `${prefix},` || bodyMessage.substring(0, 4).toLowerCase() == `${prefix}.`;
-  const contiene = bodyMessage.includes(` ${prefix} `) || bodyMessage.includes(` ${prefix},`) || bodyMessage.includes(` ${prefix}.`);
+  const contiene = bodyMessage.includes(` ${prefix} `) || bodyMessage.includes(` ${prefix},`) || bodyMessage.includes(` ${prefix}.`) || bodyMessage.includes(` ${prefix}!`) || bodyMessage.includes(` ${prefix}?`);
   return comienzaCon || contiene;
 }
