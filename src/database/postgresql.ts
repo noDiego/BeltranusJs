@@ -1,6 +1,7 @@
 import {Client} from 'pg';
 import {Chatinfo, GPTMessage, GPTRol, PromptName} from '../interfaces/chatinfo';
 import logger from "../logger";
+require('dotenv').config();
 
 const config = {
   user: process.env.PSQL_USER,
