@@ -1,5 +1,6 @@
 import {Chat, Message} from 'whatsapp-web.js';
 import logger from './logger';
+import moment from "moment-timezone";
 
 export function getMsgData(message: Message): {command: string, content: string}{
   const command = message.body.split(' ')[0];
@@ -31,10 +32,5 @@ export function tienePrefix(bodyMessage: string, prefix: string): boolean {
 }
 
 export function getCLStringDate(date?: Date){
-  const reqDate = date || new Date();
-  const chileTimezoneOffset = -4 * 60; // GMT-4 (horario de verano)
-  return new Date(reqDate.getTime() - chileTimezoneOffset * 60 * 1000)
-      .toISOString()
-      .replace(/Z$/, 'CL')
-      .replace(/\.\d{3}$/, '');
+  return moment(date).tz('America/Santiago').format()+"CL";
 }
