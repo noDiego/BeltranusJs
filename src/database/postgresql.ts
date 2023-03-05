@@ -17,8 +17,7 @@ export class PostgresClient {
   private static instance: PostgresClient;
   private client: Client;
   private lastQueryTime: Date = new Date();
-  private isConnected = false;
-  private tiempoInactividad = 2 * 60 * 1000; // 10 minutos
+  private isConnected = false;private tiempoInactividad = 2 * 60 * 1000; // 10 minutos
 
   constructor() {
     this.startTimer();
@@ -29,6 +28,7 @@ export class PostgresClient {
       this.client = new Client(config);
       await this.client.connect();
       this.isConnected = true;
+      logger.info('Conexion a PostgreSQL iniciada');
     }
     this.lastQueryTime = new Date();
     return this.client;

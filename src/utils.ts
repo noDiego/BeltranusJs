@@ -29,3 +29,8 @@ export function tienePrefix(bodyMessage: string, prefix: string): boolean {
   const regex = new RegExp(`(^|\\s)${prefix}($|[!?.]|\\s|,\\s)`, 'i');
   return regex.test(bodyMessage);
 }
+
+export function getCLStringDate(date?: Date){
+  const reqDate = date || new Date();
+  return reqDate.toLocaleString('es-CL', { timeZone: 'America/Santiago', timeZoneName: 'short' });
+}
