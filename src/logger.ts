@@ -9,9 +9,8 @@ const dailyRotateFile = new (winston.transports.DailyRotateFile)({
   maxFiles: '14d'
 });
 
-let date = new Date().toISOString();
 const logFormat = winston.format.printf(function(info) {
-  return `${date}-${info.level}: ${JSON.stringify(info.message, null, 4)}`;
+  return `${new Date().toISOString()}-${info.level}: ${JSON.stringify(info.message, null, 4)}`;
 });
 
 const logger = winston.createLogger({

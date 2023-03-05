@@ -13,7 +13,7 @@ export interface GPTMessage{
   name: string;
   conversation_id?: string;
   message_text: string;
-  created_at?: string;
+  created_at: string;
 }
 
 export enum GPTRol{

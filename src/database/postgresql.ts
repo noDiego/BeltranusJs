@@ -1,53 +1,48 @@
-import { Client } from 'pg';
-import { Chatinfo, GPTMessage, GPTRol, PromptName } from '../interfaces/chatinfo';
-import logger from '../logger';
-require('dotenv').config();
+import {Client} from 'pg';
+import {Chatinfo, GPTMessage, GPTRol, PromptName} from '../interfaces/chatinfo';
+import logger from "../logger";
 
 const config = {
   user: process.env.PSQL_USER,
   password: process.env.PSQL_PASS,
   host: process.env.PSQL_HOST,
-  database: process.env.PSQL_DB
+  database: process.env.PSQL_DB,
+  keepAlive: false
 }
 
 const MSGS_LIMIT = 15;
 
 export class PostgresClient {
-  private client: Client;
   private static instance: PostgresClient;
-  private lastQueryTime: Date;
-  private connected = false;
+  private client: Client;
+  private lastQueryTime: Date = new Date();
+  private isConnected = false;
+  private tiempoInactividad = 2 * 60 * 1000; // 10 minutos
 
   constructor() {
-
-    this.client = new Client(config);
-
-    // Establecer el temporizador para desconectar la base de datos
-    const DISCONNECT_TIMEOUT = 10 * 60 * 1000; // 10 minutos
-    setTimeout(() => {
-      if(!this.lastQueryTime) return;
-
-      const now = new Date();
-      const timeSinceLastQuery = now.getTime() - this.lastQueryTime.getTime();
-      if (timeSinceLastQuery > DISCONNECT_TIMEOUT && this.connected) {
-        this.client.end().then(() => {
-          this.connected = false;
-          logger.info('PostgreSQL desconectado por inactividad');
-        }).catch(err => {
-          logger.error('Error al desconectar PostgreSQL:', err);
-        });
-      }
-    }, DISCONNECT_TIMEOUT);
+    this.startTimer();
   }
 
-  private connectToDb(){
-    this.client = new Client(config);
-    this.client.connect().then(()=>{
-      this.connected = true;
-      logger.info('PostgreSQL Connected')
-    }).catch(err=>{
-      logger.error('Error en DB!:',err);
-    });
+  private async getClient(){
+    if(!this.isConnected) {
+      this.client = new Client(config);
+      await this.client.connect();
+      this.isConnected = true;
+    }
+    this.lastQueryTime = new Date();
+    return this.client;
+  }
+
+  private startTimer(){
+    // Establecer el temporizador para desconectar la base de datos
+    setInterval(async () => {
+      const timeSinceLastQuery = new Date().getTime() - this.lastQueryTime.getTime();
+      if (this.isConnected && timeSinceLastQuery > this.tiempoInactividad) {
+        await this.client.end();
+        this.isConnected = false;
+        logger.info('PostgreSQL disconnected due to inactivity');
+      }
+    }, this.tiempoInactividad);
   }
 
   public static getInstance(): PostgresClient {
@@ -58,15 +53,15 @@ export class PostgresClient {
   }
 
   private async query(sql: string, params: any[] = []): Promise<any> {
-    if(!this.connected) this.connectToDb();
+
+    const client = await this.getClient();
 
     try {
-      const result = await this.client.query(sql, params);
-      this.lastQueryTime = new Date();
+      const result = await client.query(sql, params);
       return result.rows;
     } catch (error) {
-      console.error(error);
-      return null;
+      logger.error(error);
+      throw error;
     }
   }
 
@@ -85,11 +80,11 @@ export class PostgresClient {
     for (const row of rows) {
       if(!row.message_text) continue;
       messages.push({
-        name: row.name,
-        message_text: row.message_text,
-        role: row.role,
-        created_at: <string>row.created_at
-      }
+            name: row.name,
+            message_text: row.message_text,
+            role: row.role,
+            created_at: <string>row.created_at
+          }
       )
     }
 
