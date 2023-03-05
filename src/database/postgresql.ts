@@ -15,10 +15,33 @@ const MSGS_LIMIT = 15;
 export class PostgresClient {
   private client: Client;
   private static instance: PostgresClient;
+  private lastQueryTime: Date;
+  private connected = false;
 
   constructor() {
+
+    this.client = new Client(config);
+
+    // Establecer el temporizador para desconectar la base de datos
+    const DISCONNECT_TIMEOUT = 10 * 60 * 1000; // 10 minutos
+    setTimeout(() => {
+      const now = new Date();
+      const timeSinceLastQuery = now.getTime() - this.lastQueryTime.getTime();
+      if (timeSinceLastQuery > DISCONNECT_TIMEOUT && this.connected) {
+        this.client.end().then(() => {
+          this.connected = false;
+          logger.info('PostgreSQL desconectado por inactividad');
+        }).catch(err => {
+          logger.error('Error al desconectar PostgreSQL:', err);
+        });
+      }
+    }, DISCONNECT_TIMEOUT);
+  }
+
+  private connectToDb(){
     this.client = new Client(config);
     this.client.connect().then(()=>{
+      this.connected = true;
       logger.info('PostgreSQL Connected')
     }).catch(err=>{
       logger.error('Error en DB!:',err);
@@ -30,6 +53,19 @@ export class PostgresClient {
       PostgresClient.instance = new PostgresClient();
     }
     return PostgresClient.instance;
+  }
+
+  private async query(sql: string, params: any[] = []): Promise<any> {
+    if(!this.connected) this.connectToDb();
+
+    try {
+      const result = await this.client.query(sql, params);
+      this.lastQueryTime = new Date();
+      return result.rows;
+    } catch (error) {
+      console.error(error);
+      return null;
+    }
   }
 
   public async loadChatInfo(prompt_name: PromptName, limit?): Promise<Chatinfo> {
@@ -76,27 +112,9 @@ export class PostgresClient {
     await this.query(sql, params);
   }
 
-  private async query(sql: string, params: any[] = []): Promise<any> {
-    try {
-      const result = await this.client.query(sql, params);
-      return result.rows;
-    } catch (error) {
-      console.error(error);
-      return null;
-    }
-  }
-
   public async saveChatData(conversation_id: string, lastmessage_id: string){
     const sql = `UPDATE wenchotino.chats_cfg SET lastmessage_id = $1 WHERE conversation_id = $2`;
     const params = [lastmessage_id, conversation_id];
     await this.query(sql, params);
-  }
-
-  public async disconnect(): Promise<void> {
-    try {
-      await this.client.end();
-    } catch (error) {
-      console.error(error);
-    }
   }
 }
