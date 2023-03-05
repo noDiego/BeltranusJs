@@ -1,4 +1,4 @@
-import { Chat, Message } from 'whatsapp-web.js';
+import {Chat, Message} from 'whatsapp-web.js';
 import logger from './logger';
 
 export function getMsgData(message: Message): {command: string, content: string}{
@@ -32,5 +32,7 @@ export function tienePrefix(bodyMessage: string, prefix: string): boolean {
 
 export function getCLStringDate(date?: Date){
   const reqDate = date || new Date();
-  return reqDate.toLocaleString('es-CL', { timeZone: 'America/Santiago', timeZoneName: 'short' });
+  const chileTime = reqDate.toLocaleString('es-CL', { timeZone: 'America/Santiago', timeZoneName: 'short' });
+  const isoString = reqDate.toISOString();
+  return isoString.replace('Z', chileTime.substring(chileTime.indexOf(' ')).trim());
 }
