@@ -32,7 +32,9 @@ export function tienePrefix(bodyMessage: string, prefix: string): boolean {
 
 export function getCLStringDate(date?: Date){
   const reqDate = date || new Date();
-  const chileTime = reqDate.toLocaleString('es-CL', { timeZone: 'America/Santiago', timeZoneName: 'short' });
-  const isoString = reqDate.toISOString();
-  return isoString.replace('Z', chileTime.substring(chileTime.indexOf(' ')).trim());
+  const chileTimezoneOffset = -4 * 60; // GMT-4 (horario de verano)
+  return new Date(reqDate.getTime() - chileTimezoneOffset * 60 * 1000)
+      .toISOString()
+      .replace(/Z$/, 'CL')
+      .replace(/\.\d{3}$/, '');
 }
