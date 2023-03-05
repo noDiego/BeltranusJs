@@ -25,6 +25,8 @@ export class PostgresClient {
     // Establecer el temporizador para desconectar la base de datos
     const DISCONNECT_TIMEOUT = 10 * 60 * 1000; // 10 minutos
     setTimeout(() => {
+      if(!this.lastQueryTime) return;
+
       const now = new Date();
       const timeSinceLastQuery = now.getTime() - this.lastQueryTime.getTime();
       if (timeSinceLastQuery > DISCONNECT_TIMEOUT && this.connected) {
