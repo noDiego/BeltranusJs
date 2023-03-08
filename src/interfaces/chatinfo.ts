@@ -30,10 +30,29 @@ export enum PromptName {
   CAIN = 'deckardcain',
   DAN = 'dan',
   CHATGPT = 'chatgpt',
-  BELTRANUS = 'beltranus'
+  BELTRANUS = 'beltranus',
+  MULCH = 'mulch'
 }
 
 export enum GrupoName {
   FAMILIA = 'Familia B&G',
   TEST = 'Test 5'
 }
+
+export type PromptData = {
+  name: PromptName;
+  prefix: string;
+  limit: number;
+}
+
+export const prompts: Record<PromptName, PromptData> = {
+  [PromptName.GANDALF]: { name: PromptName.GANDALF, prefix: 'gandalf', limit: 10 },
+  [PromptName.DEFAULT]: { name: PromptName.DEFAULT, prefix: 'roboto', limit: 10 },
+  [PromptName.WENCHOTINO]: { name: PromptName.WENCHOTINO, prefix: 'wenchotino', limit: 30 },
+  [PromptName.ROBOTO]: { name: PromptName.ROBOTO, prefix: 'roboto', limit: 20 },
+  [PromptName.CAIN]: { name: PromptName.CAIN, prefix: 'cain', limit: 10 },
+  [PromptName.DAN]: { name: PromptName.DAN, prefix: 'dan', limit: 10 },
+  [PromptName.CHATGPT]: { name: PromptName.CHATGPT, prefix: 'roboto', limit: 20 },
+  [PromptName.BELTRANUS]: { name: PromptName.BELTRANUS, prefix: 'bel', limit: 20 },
+  [PromptName.MULCH]: { name: PromptName.MULCH, prefix: 'mulchquillota', limit: 3 },
+};

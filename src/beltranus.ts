@@ -1,12 +1,13 @@
 import { ChatGTP } from './chatgpt';
 import { PostgresClient } from './database/postgresql';
 import { Chat, Message } from 'whatsapp-web.js';
-import { getMsgData, handleError, logMessage, tienePrefix } from './utils';
-import { GrupoName, PromptName } from './interfaces/chatinfo';
+import { handleError, logMessage, tienePrefix } from './utils';
+import { PromptData, PromptName, prompts } from './interfaces/chatinfo';
 
 const prefixWenchotino = 'wenchotino';
 const prefixBel = 'bel';
 const prefixRoboto = 'roboto';
+const prefixMulch= 'mulchquillota';
 
 const gruposBeltranus = ['Familia B&G', 'Hermanitos'];
 const gruposWenchotino = ['Corvo 👺'];
@@ -25,19 +26,23 @@ export class Beltranus {
   }
 
 
-  private async getPrompt(message: Message, chatData: Chat): Promise<PromptName | null> {
-    const tieneWenchotino = tienePrefix(message.body, prefixWenchotino);
-    const tieneBel = tienePrefix(message.body, prefixBel);
-    const tieneRoboto = tienePrefix(message.body, prefixRoboto);
+  private async getPrompt(message: Message, chatData: Chat): Promise<PromptData | null> {
+
+    const tieneWenchotino = tienePrefix(message.body, prompts[PromptName.WENCHOTINO].prefix);
+    const tieneBel = tienePrefix(message.body, prompts[PromptName.BELTRANUS].prefix);
+    const tieneRoboto = tienePrefix(message.body, prompts[PromptName.ROBOTO].prefix);
+    const tieneMulch = tienePrefix(message.body, prompts[PromptName.MULCH].prefix);
 
     const meResponden = message.hasQuotedMsg ? (await message.getQuotedMessage()).fromMe : false;
 
     if(tieneBel || (meResponden && gruposBeltranus.includes(chatData.name)))
-      return PromptName.BELTRANUS;
+      return prompts[PromptName.BELTRANUS];
+    else if(tieneMulch || (meResponden && gruposBeltranus.includes(chatData.name)))
+      return prompts[PromptName.MULCH];
     else if(tieneWenchotino || (meResponden && gruposWenchotino.includes(chatData.name)))
-      return PromptName.WENCHOTINO;
+      return prompts[PromptName.WENCHOTINO];
     else if(tieneRoboto || (meResponden && gruposRoboto.includes(chatData.name)) || !chatData.isGroup)
-      return PromptName.ROBOTO;
+      return prompts[PromptName.ROBOTO];
     else
       return null;
   }
@@ -49,7 +54,7 @@ export class Beltranus {
       const tieneCommand = message.body.substring(0, 3) == this.commandPrefix+'a ';
 
       /** Se evalua si corresponde a algun bot */
-      let   prompt: PromptName | null = await this.getPrompt(message, chatData);
+      let prompt: PromptData = await this.getPrompt(message, chatData) as PromptData;
       if(prompt == null && !tieneCommand) return false;
 
       logMessage(message, chatData);
@@ -59,7 +64,7 @@ export class Beltranus {
 
       /** Envia mensaje a ChatGPT */
       chatData.sendStateTyping();
-      await this.chatGPTReply(message, message.body, contactInfo.name || 'Alguien', prompt as PromptName);
+      await this.chatGPTReply(message, message.body, contactInfo.name || 'Alguien', prompt);
       chatData.clearState();
       return true;
     } catch (e) {
@@ -67,14 +72,14 @@ export class Beltranus {
     }
   }
 
-  private async chatGPTReply(message: Message, messageContent: string, contactName: string, prompt: PromptName) {
+  private async chatGPTReply(message: Message, messageContent: string, contactName: string, prompt: PromptData) {
     /** Obtiene Prompt*/
 
     /** Se setean variables que se usan en proceso */
     let mensajeParaBot = messageContent;
 
     /** Se obtienen datos de Prompt **/
-    let promptInfo = await this.db.loadChatInfo(prompt, prompt == PromptName.BELTRANUS? 20: 10);
+    let promptInfo = await this.db.loadChatInfo(prompt.name, prompt.limit);
 
     /**Enviando mensaje y obteniendo respuesta */
     const responseChat = await this.chatGpt.sendMessage(contactName, mensajeParaBot, promptInfo);
