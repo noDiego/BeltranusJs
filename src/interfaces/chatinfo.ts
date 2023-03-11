@@ -53,6 +53,6 @@ export const prompts: Record<PromptName, PromptData> = {
   [PromptName.CAIN]: { name: PromptName.CAIN, prefix: 'cain', limit: 10 },
   [PromptName.DAN]: { name: PromptName.DAN, prefix: 'dan', limit: 10 },
   [PromptName.CHATGPT]: { name: PromptName.CHATGPT, prefix: 'roboto', limit: 20 },
-  [PromptName.BELTRANUS]: { name: PromptName.BELTRANUS, prefix: 'bel', limit: 100 },
+  [PromptName.BELTRANUS]: { name: PromptName.BELTRANUS, prefix: 'bel', limit: 60 },
   [PromptName.MULCH]: { name: PromptName.MULCH, prefix: 'mulchquillota', limit: 3 },
 };
