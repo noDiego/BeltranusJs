@@ -1,7 +1,7 @@
 import { ChatGTP } from './chatgpt';
 import { PostgresClient } from './database/postgresql';
 import { Chat, Message } from 'whatsapp-web.js';
-import { handleError, logMessage, tienePrefix } from './utils';
+import { handleError, logMessage, removeNonAlphanumeric, tienePrefix } from './utils';
 import { PromptData, PromptName, prompts } from './interfaces/chatinfo';
 
 const prefixWenchotino = 'wenchotino';
@@ -82,7 +82,7 @@ export class Beltranus {
     let promptInfo = await this.db.loadChatInfo(prompt.name, prompt.limit);
 
     /**Enviando mensaje y obteniendo respuesta */
-    const responseChat = await this.chatGpt.sendMessage(contactName, mensajeParaBot, promptInfo);
+    const responseChat = await this.chatGpt.sendMessage(removeNonAlphanumeric(contactName), mensajeParaBot, promptInfo);
 
     /** Respondiendo*/
     return await message.reply(responseChat);

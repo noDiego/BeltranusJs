@@ -34,3 +34,9 @@ export function tienePrefix(bodyMessage: string, prefix: string): boolean {
 export function getCLStringDate(date?: Date){
   return moment(date).tz('America/Santiago').format()+"CL";
 }
+
+export function removeNonAlphanumeric(str: string): string {
+  const regex = /[^a-zA-Z0-9]/g;
+  const normalized = str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return normalized.replace(regex, '');
+}
