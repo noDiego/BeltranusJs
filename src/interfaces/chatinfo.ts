@@ -57,5 +57,5 @@ export const prompts: Record<PromptName, PromptData> = {
   [PromptName.CHATGPT]: { name: PromptName.CHATGPT, prefix: 'roboto', limit: 20 },
   [PromptName.BELTRANUS]: { name: PromptName.BELTRANUS, prefix: 'bel', limit: 60 },
   [PromptName.MULCH]: { name: PromptName.MULCH, prefix: 'mulchquillota', limit: 3 },
-  [PromptName.BIRDOS]: { name: PromptName.MULCH, prefix: 'birdobot', limit: 15 },
+  [PromptName.BIRDOS]: { name: PromptName.BIRDOS, prefix: 'birdobot', limit: 15 },
 };
