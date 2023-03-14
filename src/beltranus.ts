@@ -2,7 +2,7 @@ import { ChatGTP } from './chatgpt';
 import { PostgresClient } from './database/postgresql';
 import { Chat, Message } from 'whatsapp-web.js';
 import { handleError, logMessage, removeNonAlphanumeric, tienePrefix } from './utils';
-import { PromptData, PromptName, prompts } from './interfaces/chatinfo';
+import { GrupoName, PromptData, PromptName, prompts } from './interfaces/chatinfo';
 
 const prefixWenchotino = 'wenchotino';
 const prefixBel = 'bel';
@@ -32,17 +32,21 @@ export class Beltranus {
     const tieneBel = tienePrefix(message.body, prompts[PromptName.BELTRANUS].prefix);
     const tieneRoboto = tienePrefix(message.body, prompts[PromptName.ROBOTO].prefix);
     const tieneMulch = tienePrefix(message.body, prompts[PromptName.MULCH].prefix);
+    const tieneBirdo = tienePrefix(message.body, prompts[PromptName.BIRDOS].prefix);
 
     const meResponden = message.hasQuotedMsg ? (await message.getQuotedMessage()).fromMe : false;
 
     if(tieneBel || (meResponden && gruposBeltranus.includes(chatData.name)))
       return prompts[PromptName.BELTRANUS];
+    else if(tieneBirdo || (meResponden && GrupoName.BIRDITOS.includes(chatData.name.substring(0,5))))
+      return prompts[PromptName.BIRDOS];
     else if(tieneMulch || (meResponden && gruposBeltranus.includes(chatData.name)))
       return prompts[PromptName.MULCH];
     else if(tieneWenchotino || (meResponden && gruposWenchotino.includes(chatData.name)))
       return prompts[PromptName.WENCHOTINO];
     else if(tieneRoboto || (meResponden && gruposRoboto.includes(chatData.name)) || !chatData.isGroup)
       return prompts[PromptName.ROBOTO];
+
     else
       return null;
   }

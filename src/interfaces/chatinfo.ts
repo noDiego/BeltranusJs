@@ -31,12 +31,14 @@ export enum PromptName {
   DAN = 'dan',
   CHATGPT = 'chatgpt',
   BELTRANUS = 'beltranus',
-  MULCH = 'mulch'
+  MULCH = 'mulch',
+  BIRDOS = 'birdobot',
 }
 
 export enum GrupoName {
   FAMILIA = 'Familia B&G',
-  TEST = 'Test 5'
+  TEST = 'Test 5',
+  BIRDITOS = 'Birdos4Ever 🎀'
 }
 
 export type PromptData = {
@@ -55,4 +57,5 @@ export const prompts: Record<PromptName, PromptData> = {
   [PromptName.CHATGPT]: { name: PromptName.CHATGPT, prefix: 'roboto', limit: 20 },
   [PromptName.BELTRANUS]: { name: PromptName.BELTRANUS, prefix: 'bel', limit: 60 },
   [PromptName.MULCH]: { name: PromptName.MULCH, prefix: 'mulchquillota', limit: 3 },
+  [PromptName.BIRDOS]: { name: PromptName.MULCH, prefix: 'birdobot', limit: 15 },
 };
