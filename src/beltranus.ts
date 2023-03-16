@@ -45,10 +45,10 @@ export class Beltranus {
       return prompts[PromptName.MULCH];
     else if(tieneWenchotino || (meResponden && gruposWenchotino.includes(chatData.name)))
       return prompts[PromptName.WENCHOTINO];
-    else if(tieneRoboto || (meResponden && gruposRoboto.includes(chatData.name)) || !chatData.isGroup)
-      return prompts[PromptName.ROBOTO];
     else if(tieneDan)
       return prompts[PromptName.DAN];
+    else if(tieneRoboto || (meResponden && gruposRoboto.includes(chatData.name)) || !chatData.isGroup)
+      return prompts[PromptName.ROBOTO];
     else
       return null;
   }
