@@ -50,7 +50,7 @@ export type PromptData = {
 export const prompts: Record<PromptName, PromptData> = {
   [PromptName.GANDALF]: { name: PromptName.GANDALF, prefix: 'gandalf', limit: 10 },
   [PromptName.DEFAULT]: { name: PromptName.DEFAULT, prefix: 'roboto', limit: 10 },
-  [PromptName.WENCHOTINO]: { name: PromptName.WENCHOTINO, prefix: 'wenchotino', limit: 30 },
+  [PromptName.WENCHOTINO]: { name: PromptName.WENCHOTINO, prefix: 'nariño', limit: 30 },
   [PromptName.ROBOTO]: { name: PromptName.ROBOTO, prefix: 'roboto', limit: 20 },
   [PromptName.CAIN]: { name: PromptName.CAIN, prefix: 'cain', limit: 10 },
   [PromptName.DAN]: { name: PromptName.DAN, prefix: 'dan', limit: 10 },
