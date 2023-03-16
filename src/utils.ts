@@ -47,3 +47,11 @@ export function filtraJailbreak(msg){
     return splitted[1];
   return msg;
 }
+
+export function parseCommand(input: string): { command?: string, commandMessage?: string } {
+  const match = input.match(/^-(\S+)\s*(.*)/);
+  if (!match) {
+    return { commandMessage: input };
+  }
+  return { command: match[1], commandMessage: match[2] };
+}

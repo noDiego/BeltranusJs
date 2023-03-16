@@ -1,8 +1,10 @@
 import { ChatGTP } from './chatgpt';
 import { PostgresClient } from './database/postgresql';
-import { Chat, Message } from 'whatsapp-web.js';
-import { filtraJailbreak, handleError, logMessage, removeNonAlphanumeric, tienePrefix } from './utils';
+import { Chat, Message, MessageMedia } from 'whatsapp-web.js';
+import { filtraJailbreak, handleError, logMessage, parseCommand, removeNonAlphanumeric, tienePrefix } from './utils';
 import { GrupoName, PromptData, PromptName, prompts } from './interfaces/chatinfo';
+import path from 'path';
+import * as fs from 'fs';
 
 const prefixWenchotino = 'wenchotino';
 const prefixBel = 'bel';
@@ -57,16 +59,24 @@ export class Beltranus {
     try {
       /** Se reciben datos de entrada */
       const chatData: Chat = await message.getChat();
-      const tieneCommand = message.body.substring(0, 3) == this.commandPrefix+'a ';
+      const { command, commandMessage } = parseCommand(message.body);
 
       /** Se evalua si corresponde a algun bot */
       let prompt: PromptData = await this.getPrompt(message, chatData) as PromptData;
-      if(prompt == null && !tieneCommand) return false;
+      if(prompt == null && !command) return false;
 
       logMessage(message, chatData);
 
       /** Datos de contacto */
       const contactInfo = await message.getContact();
+
+      /** Envia audios **/
+      if(command && prompt.name == PromptName.WENCHOTINO){
+        chatData.sendStateTyping();
+        await this.commandSelect(message, contactInfo.name || 'Alguien', prompt);
+        chatData.clearState();
+        return true;
+      }
 
       /** Envia mensaje a ChatGPT */
       chatData.sendStateTyping();
@@ -98,17 +108,41 @@ export class Beltranus {
   }
 
 
-  private async commandSelect(message: Message, command: string, contactName: string) {
+  private async commandSelect(message: Message, contactName: string, prompt: PromptData) {
+    const { command, commandMessage } = parseCommand(message.body);
     switch (command) {
-      case "-a":
-        return await this.customMp3(message);
+      case "a":
+        return await this.customMp3(message, <string> commandMessage);
       default:
         return true;
     }
   }
 
-  private async customMp3(message) {
-    return await message.reply('mp3');
+  private async customMp3(message: Message, commandMessage: string) {
+    const mp3Folder = __dirname + "/../mp3/";
+
+    if(!commandMessage || commandMessage == ''){
+      let msgAudios = '-a ';
+      fs.readdir(mp3Folder, function (err, files) {
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          msgAudios = msgAudios + file.replace('.mp3', '') + ((i + 1) == files.length ? "" : "\n-a ")
+        }
+      });
+      return message.reply(msgAudios);
+    }
+
+    const pathNormalized = path.normalize(mp3Folder + commandMessage + ".mp3");
+
+    // enviar el archivo de audio como un mensaje de audio
+    const audioBuffer = fs.readFileSync(pathNormalized);
+    const base64Audio = audioBuffer.toString('base64');
+
+    // Crear un objeto MessageMedia a partir del audio
+    const audioMedia = new MessageMedia('audio/mp3', base64Audio, commandMessage+'.mp3');
+
+    const chat = await message.getChat();
+    return await chat.sendMessage(audioMedia);
   }
 
   // public async readMessage(message: Message) {
