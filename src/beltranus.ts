@@ -1,7 +1,7 @@
 import { ChatGTP } from './chatgpt';
 import { PostgresClient } from './database/postgresql';
 import { Chat, Message } from 'whatsapp-web.js';
-import { handleError, logMessage, removeNonAlphanumeric, tienePrefix } from './utils';
+import { filtraJailbreak, handleError, logMessage, removeNonAlphanumeric, tienePrefix } from './utils';
 import { GrupoName, PromptData, PromptName, prompts } from './interfaces/chatinfo';
 
 const prefixWenchotino = 'wenchotino';
@@ -33,6 +33,7 @@ export class Beltranus {
     const tieneRoboto = tienePrefix(message.body, prompts[PromptName.ROBOTO].prefix);
     const tieneMulch = tienePrefix(message.body, prompts[PromptName.MULCH].prefix);
     const tieneBirdo = tienePrefix(message.body, prompts[PromptName.BIRDOS].prefix);
+    const tieneDan = tienePrefix(message.body, prompts[PromptName.DAN].prefix);
 
     const meResponden = message.hasQuotedMsg ? (await message.getQuotedMessage()).fromMe : false;
 
@@ -46,7 +47,8 @@ export class Beltranus {
       return prompts[PromptName.WENCHOTINO];
     else if(tieneRoboto || (meResponden && gruposRoboto.includes(chatData.name)) || !chatData.isGroup)
       return prompts[PromptName.ROBOTO];
-
+    else if(tieneDan)
+      return prompts[PromptName.DAN];
     else
       return null;
   }
@@ -86,7 +88,10 @@ export class Beltranus {
     let promptInfo = await this.db.loadChatInfo(prompt.name, prompt.limit);
 
     /**Enviando mensaje y obteniendo respuesta */
-    const responseChat = await this.chatGpt.sendMessage(removeNonAlphanumeric(contactName), mensajeParaBot, promptInfo);
+    let responseChat = await this.chatGpt.sendMessage(removeNonAlphanumeric(contactName), mensajeParaBot, promptInfo);
+
+    /**Filtra mensaje si es DAN */
+    responseChat = filtraJailbreak(responseChat);
 
     /** Respondiendo*/
     return await message.reply(responseChat);

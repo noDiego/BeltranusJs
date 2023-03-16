@@ -40,3 +40,10 @@ export function removeNonAlphanumeric(str: string): string {
   const normalized = str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   return normalized.replace(regex, '');
 }
+
+export function filtraJailbreak(msg){
+  const splitted = msg.split('[🔓JAILBREAK] ');
+  if(splitted.length >1)
+    return splitted[1];
+  return msg;
+}
