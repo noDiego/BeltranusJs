@@ -3,7 +3,7 @@ import { PostgresClient } from './database/postgresql';
 import { Chat, Message, MessageMedia } from 'whatsapp-web.js';
 import { filtraJailbreak, handleError, logMessage, parseCommand, removeNonAlphanumeric, tienePrefix } from './utils';
 import { GrupoName, PromptData, PromptName, prompts } from './interfaces/chatinfo';
-import path from 'path';
+import * as path from 'path';
 import * as fs from 'fs';
 
 const prefixWenchotino = 'wenchotino';
@@ -30,6 +30,8 @@ export class Beltranus {
 
   private async getPrompt(message: Message, chatData: Chat): Promise<PromptData | null> {
 
+    const { command, commandMessage } = parseCommand(message.body);
+
     const tieneWenchotino = tienePrefix(message.body, prompts[PromptName.WENCHOTINO].prefix);
     const tieneBel = tienePrefix(message.body, prompts[PromptName.BELTRANUS].prefix);
     const tieneRoboto = tienePrefix(message.body, prompts[PromptName.ROBOTO].prefix);
@@ -45,7 +47,7 @@ export class Beltranus {
       return prompts[PromptName.BIRDOS];
     else if(tieneMulch || (meResponden && gruposBeltranus.includes(chatData.name)))
       return prompts[PromptName.MULCH];
-    else if(tieneWenchotino || (meResponden && gruposWenchotino.includes(chatData.name)))
+    else if(tieneWenchotino || (meResponden && gruposWenchotino.includes(chatData.name))|| (!!command && gruposWenchotino.includes(chatData.name)))
       return prompts[PromptName.WENCHOTINO];
     else if(tieneDan)
       return prompts[PromptName.DAN];
@@ -71,16 +73,16 @@ export class Beltranus {
       const contactInfo = await message.getContact();
 
       /** Envia audios **/
-      if(command && prompt.name == PromptName.WENCHOTINO){
+      if(command && prompt != null && !!prompt && prompt.name == PromptName.WENCHOTINO){
         chatData.sendStateTyping();
-        await this.commandSelect(message, contactInfo.name || 'Alguien', prompt);
+        await this.commandSelect(message, contactInfo?.name || 'Alguien', prompt);
         chatData.clearState();
         return true;
       }
 
       /** Envia mensaje a ChatGPT */
       chatData.sendStateTyping();
-      await this.chatGPTReply(message, message.body, contactInfo.name || 'Alguien', prompt);
+      await this.chatGPTReply(message, message.body, contactInfo?.name || 'Alguien', prompt);
       chatData.clearState();
       return true;
     } catch (e) {
@@ -128,8 +130,9 @@ export class Beltranus {
           const file = files[i];
           msgAudios = msgAudios + file.replace('.mp3', '') + ((i + 1) == files.length ? "" : "\n-a ")
         }
+        message.reply(msgAudios);
       });
-      return message.reply(msgAudios);
+      return;
     }
 
     const pathNormalized = path.normalize(mp3Folder + commandMessage + ".mp3");
