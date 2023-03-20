@@ -49,11 +49,11 @@ export type PromptData = {
 
 export const prompts: Record<PromptName, PromptData> = {
   [PromptName.GANDALF]: { name: PromptName.GANDALF, prefix: 'gandalf', limit: 26 },
-  [PromptName.DEFAULT]: { name: PromptName.DEFAULT, prefix: 'roboto', limit: 4 },
+  [PromptName.DEFAULT]: { name: PromptName.DEFAULT, prefix: 'roboto', limit: 8 },
   [PromptName.WENCHOTINO]: { name: PromptName.WENCHOTINO, prefix: 'wenchotino', limit: 30 },
-  [PromptName.ROBOTO]: { name: PromptName.ROBOTO, prefix: 'roboto', limit: 6 },
+  [PromptName.ROBOTO]: { name: PromptName.ROBOTO, prefix: 'roboto', limit: 8 },
   [PromptName.CAIN]: { name: PromptName.CAIN, prefix: 'cain', limit: 10 },
-  [PromptName.DAN]: { name: PromptName.DAN, prefix: 'dan', limit: 4 },
+  [PromptName.DAN]: { name: PromptName.DAN, prefix: 'dan', limit: 6 },
   [PromptName.CHATGPT]: { name: PromptName.CHATGPT, prefix: 'roboto', limit: 8 },
   [PromptName.BELTRANUS]: { name: PromptName.BELTRANUS, prefix: 'bel', limit: 8 },
   [PromptName.MULCH]: { name: PromptName.MULCH, prefix: 'mulchquillota', limit: 2 },
