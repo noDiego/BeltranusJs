@@ -102,9 +102,6 @@ export class Beltranus {
     /**Enviando mensaje y obteniendo respuesta */
     let responseChat = await this.chatGpt.sendMessage(removeNonAlphanumeric(contactName), mensajeParaBot, promptInfo);
 
-    /**Filtra mensaje si es DAN */
-    responseChat = filtraJailbreak(responseChat);
-
     /** Respondiendo*/
     return await message.reply(responseChat);
   }
