@@ -101,7 +101,8 @@ export class Beltranus {
     }
 
     /** Se agrega preMessage a ultimo item*/
-    messageList[messageList.length-1].content = chatCfg.premsg+" "+messageList[messageList.length-1].content;
+    if(chatCfg.premsg)
+      messageList[messageList.length-1].content = (chatCfg.premsg+" "+messageList[messageList.length-1].content).trim();
 
     /** Se envia mensaje y se retorna texto de respuesta */
     return await this.chatGpt.sendMessages(messageList);
