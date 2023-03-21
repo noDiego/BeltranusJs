@@ -55,3 +55,9 @@ export function parseCommand(input: string): { command?: string, commandMessage?
   }
   return { command: match[1], commandMessage: match[2] };
 }
+
+export async function getContactName(message: Message){
+  const contactInfo = await message.getContact();
+  const name = contactInfo.name? contactInfo.name: contactInfo.pushname;
+  return removeNonAlphanumeric(name);
+}

@@ -1,12 +1,10 @@
 import { Configuration, OpenAIApi } from "openai";
-import { Chatinfo, GPTRol } from './interfaces/chatinfo';
-import { PostgresClient } from './database/postgresql';
 import logger from './logger';
+import { ChatCompletionRequestMessage } from 'openai/api';
 
 export class ChatGTP {
 
   private openai: OpenAIApi;
-  private db: PostgresClient = PostgresClient.getInstance();
 
   constructor() {
     const configuration = new Configuration({
@@ -15,40 +13,24 @@ export class ChatGTP {
     this.openai = new OpenAIApi(configuration);
   }
 
-  async sendMessage(userName: string = 'default', message: string, chatInfo: Chatinfo) {
+  async sendMessages(messageList: ChatCompletionRequestMessage[]) {
 
-    logger.info('Consultando con ChatGPT API');
+    logger.info(`[ChatGTP->sendMessages] Enviando ${messageList.length} mensajes`);
 
-    const messagesInput: any[] = [
-      this.generatePrompt(chatInfo)
-    ];
-
-    chatInfo.messages.forEach(msg => {
-      messagesInput.push({name: msg.role==GPTRol.USER? msg.name: undefined, role: msg.role, content: msg.message_text})
-    })
-
-    messagesInput.push({name:userName, role: GPTRol.USER, content: message});
+    logger.debug('[ChatGTP->sendMessages] Message List:');
+    logger.debug(messageList);
 
     const completion = await this.openai.createChatCompletion({
-      model: "gpt-3.5-turbo-0301",
-      messages: messagesInput,
+      model: "gpt-3.5-turbo",
+      messages: messageList,
     });
+
+    logger.debug('[ChatGTP->sendMessages] Completion Response:');
+    logger.debug(completion.data);
+
     const messageResult = completion.data.choices[0].message;
 
-    await this.db.saveChatMessage(chatInfo.conversation_id, userName, GPTRol.USER, message);
-    await this.db.saveChatMessage(chatInfo.conversation_id, '', GPTRol.ASSISTANT, messageResult?.content || '');
-
     return messageResult?.content || '';
-  }
-
-  private getDefaultPrompt(){
-      return `Tu nombre es Nariño. Eres un asistente muy útil. Fecha actual: ${new Date().toISOString().split('T')[0]}`;
-  }
-
-  private generatePrompt(chatInfo){
-    if(chatInfo.prompt_name == 'default')
-      return {role: "system", content: `Tu nombre es Nariño. Eres un asistente muy útil. Fecha actual: ${new Date().toISOString().split('T')[0]}` }
-    return {role: "system", content: chatInfo.prompt_text }
   }
 
 }

@@ -1,117 +1,125 @@
 import { ChatGTP } from './chatgpt';
 import { PostgresClient } from './database/postgresql';
 import { Chat, Message, MessageMedia } from 'whatsapp-web.js';
-import { filtraJailbreak, handleError, logMessage, parseCommand, removeNonAlphanumeric, tienePrefix } from './utils';
-import { GrupoName, PromptData, PromptName, prompts } from './interfaces/chatinfo';
+import { getContactName, handleError, logMessage, parseCommand, tienePrefix } from './utils';
 import * as path from 'path';
 import * as fs from 'fs';
-
-const prefixWenchotino = 'wenchotino';
-const prefixBel = 'bel';
-const prefixRoboto = 'roboto';
-const prefixMulch= 'mulchquillota';
-
-const gruposBeltranus = ['Familia B&G', 'Hermanitos'];
-const gruposWenchotino = ['Corvo 👺'];
-const gruposRoboto = ['Test 5'];
+import { ChatCfg, GPTRol } from './interfaces/chatinfo';
+import logger, { setLogLevel } from './logger';
+import { ChatCompletionRequestMessage } from 'openai/api';
 
 export class Beltranus {
 
-  private prefix = 'bel';
-  private commandPrefix = '-';
   private chatGpt: ChatGTP;
   private busy = false;
   private db: PostgresClient = PostgresClient.getInstance();
+  private chatConfigs: ChatCfg[];
 
   public constructor() {
     this.chatGpt = new ChatGTP();
+    this.loadChatConfigs().then(()=>{logger.info('ChatConfigs Loaded')});
   }
 
+  private async loadChatConfigs(){
+    const chatConfigs = await this.db.loadChatConfigs();
+    /**Se retorna arreglo con los "*" al final */
+    this.chatConfigs = chatConfigs.sort((a, b) => (a.groups === '*' ? 1 : b.groups === '*' ? -1 : 0));
+  }
 
-  private async getPrompt(message: Message, chatData: Chat): Promise<PromptData | null> {
+  private async getChatConfig(message: Message, chatData: Chat): Promise<ChatCfg | null>{
+    /** Se recorre configuraciones guardadas */
+    for (const chatCfg of this.chatConfigs) {
+      /**Revisa si el mensaje viene del grupo de la config */
+      const grupoCoincide = chatData.isGroup && chatCfg.groups.split('|').includes(chatData.name);
+      /**Revisa si el mensaje incluye el prefix de la config */
+      const prefixCoincide = tienePrefix(message.body, chatCfg.prefix);
+      /**Revisa si le estan respondiendo */
+      const meResponden = message.hasQuotedMsg ? (await message.getQuotedMessage()).fromMe : false;
 
-    const { command, commandMessage } = parseCommand(message.body);
-
-    const tieneWenchotino = tienePrefix(message.body, prompts[PromptName.WENCHOTINO].prefix);
-    const tieneBel = tienePrefix(message.body, prompts[PromptName.BELTRANUS].prefix);
-    const tieneRoboto = tienePrefix(message.body, prompts[PromptName.ROBOTO].prefix);
-    const tieneMulch = tienePrefix(message.body, prompts[PromptName.MULCH].prefix);
-    const tieneBirdo = tienePrefix(message.body, prompts[PromptName.BIRDOS].prefix);
-    const tieneDan = tienePrefix(message.body, prompts[PromptName.DAN].prefix);
-
-    const meResponden = message.hasQuotedMsg ? (await message.getQuotedMessage()).fromMe : false;
-
-    if(tieneBel || (meResponden && gruposBeltranus.includes(chatData.name)))
-      return prompts[PromptName.BELTRANUS];
-    else if(tieneBirdo || (meResponden && GrupoName.BIRDITOS.includes(chatData.name.substring(0,5))))
-      return prompts[PromptName.BIRDOS];
-    else if(tieneMulch || (meResponden && gruposBeltranus.includes(chatData.name)))
-      return prompts[PromptName.MULCH];
-    else if(tieneWenchotino || (meResponden && gruposWenchotino.includes(chatData.name))|| (!!command && gruposWenchotino.includes(chatData.name)))
-      return prompts[PromptName.WENCHOTINO];
-    else if(tieneDan)
-      return prompts[PromptName.DAN];
-    else if(tieneRoboto || (meResponden && gruposRoboto.includes(chatData.name)) || !chatData.isGroup)
-      return prompts[PromptName.ROBOTO];
-    else
-      return null;
+      /** Se retorna config si pertenece al grupo y si el prefix coincide o si le estan respondiendo */
+      if(grupoCoincide && (prefixCoincide || meResponden)) return chatCfg;
+      /** Caso para bots que pueden ser invocados en cualquier momento a traves de su nombre **/
+      if(prefixCoincide && chatCfg.groups == '-') return chatCfg;
+      /** Si no coincide ningun otro, se retornará la config que coincida con la config de group "*" y este usando el prefix correspondiente */
+      if(chatCfg.groups == '*' && (prefixCoincide || meResponden || !chatData.isGroup)) return chatCfg;
+    }
+    return null;
   }
 
   public async readMessage(message: Message) {
     try {
-      /** Se reciben datos de entrada */
+      /** Se reciben datos de entrada (Se extrae command ej: -a , y se extra mensaje */
       const chatData: Chat = await message.getChat();
       const { command, commandMessage } = parseCommand(message.body);
 
       /** Se evalua si corresponde a algun bot */
-      let prompt: PromptData = await this.getPrompt(message, chatData) as PromptData;
-      if(prompt == null && !command) return false;
+      let chatCfg: ChatCfg = await this.getChatConfig(message, chatData) as ChatCfg;
+      if(chatCfg == null && !command) return false;
 
       logMessage(message, chatData);
 
-      /** Datos de contacto */
+      /** Datos de contacto del emisor del mensaje */
       const contactInfo = await message.getContact();
 
-      /** Envia audios **/
-      if(command && prompt != null && !!prompt && prompt.name == PromptName.WENCHOTINO){
-        chatData.sendStateTyping();
-        await this.commandSelect(message, contactInfo?.name || 'Alguien', prompt);
-        chatData.clearState();
+      /** Se evalua si debe enviar a flujo comandos **/
+      if(!!command){
+        await chatData.sendStateTyping();
+        await this.commandSelect(message, contactInfo?.name || 'Alguien', chatCfg);
+        await chatData.clearState();
         return true;
       }
 
       /** Envia mensaje a ChatGPT */
       chatData.sendStateTyping();
-      await this.chatGPTReply(message, message.body, contactInfo?.name || 'Alguien', prompt);
+      const chatResponseString = await this.chatGPTReply(chatData, chatCfg);
       chatData.clearState();
-      return true;
+
+      /** Se retorna mensaje */
+      return message.reply(chatResponseString);
     } catch (e) {
       handleError(e, message);
     }
   }
 
-  private async chatGPTReply(message: Message, messageContent: string, contactName: string, prompt: PromptData) {
-    /** Obtiene Prompt*/
+  private async chatGPTReply(chatData: Chat, chatCfg: ChatCfg) {
 
-    /** Se setean variables que se usan en proceso */
-    let mensajeParaBot = messageContent;
+    /**Se arma array de mensajes*/
+    const messageList: ChatCompletionRequestMessage[] = [];
 
-    /** Se obtienen datos de Prompt **/
-    let promptInfo = await this.db.loadChatInfo(prompt.name, prompt.limit);
+    /**Primer elemento será el mensaje de sistema*/
+    messageList.push({role: GPTRol.SYSTEM, content: chatCfg.prompt_text});
 
-    /**Enviando mensaje y obteniendo respuesta */
-    let responseChat = await this.chatGpt.sendMessage(removeNonAlphanumeric(contactName), mensajeParaBot, promptInfo);
+    /**Se recorren los ultimos 'limit' mensajes para enviarlos en orden */
+    const lastMessages = await chatData.fetchMessages({ limit: chatCfg.limit });
+    for (const msg of lastMessages) {
 
-    /** Respondiendo*/
-    return await message.reply(responseChat);
+      if(!msg.body) continue; //TODO: Identificar audios y transcribir a texto. Por mientras se omiten mensajes sin texto
+
+      const rol = msg.fromMe? GPTRol.ASSISTANT: GPTRol.USER;
+      const name = msg.fromMe? undefined : (await getContactName(msg));
+      messageList.push({role: rol, name: name, content: msg.body});
+    }
+
+    /** Se agrega preMessage a ultimo item*/
+    messageList[messageList.length-1].content = chatCfg.premsg+" "+messageList[messageList.length-1].content;
+
+    /** Se envia mensaje y se retorna texto de respuesta */
+    return await this.chatGpt.sendMessages(messageList);
   }
 
 
-  private async commandSelect(message: Message, contactName: string, prompt: PromptData) {
+
+  private async commandSelect(message: Message, contactName: string, chatCfg: ChatCfg) {
     const { command, commandMessage } = parseCommand(message.body);
     switch (command) {
       case "a":
         return await this.customMp3(message, <string> commandMessage);
+      case "setLogLevel":
+        setLogLevel(commandMessage == 'debug' ? 'debug': 'info');
+        return message.reply(`Log Level: "${commandMessage}"`);
+      case "reloadConfig":
+        await this.loadChatConfigs();
+        return message.reply('Reload OK');
       default:
         return true;
     }
@@ -144,50 +152,5 @@ export class Beltranus {
     const chat = await message.getChat();
     return await chat.sendMessage(audioMedia);
   }
-
-  // public async readMessage(message: Message) {
-  //   try {
-  //     let   esWenchotino = tienePrefix(message.body, prefixWenchotino);
-  //     let   esBel = tienePrefix(message.body, prefixBel);
-  //     let   esRoboto = tienePrefix(message.body, prefixRoboto);
-  //
-  //     const tieneCommand = message.body.substring(0, 3) == this.commandPrefix+'a ';
-  //     let   prompt: PromptName = this.getPrompt(message.body);
-  //
-  //     const chatData: Chat = await message.getChat();
-  //     const quotedMessage = await message.getQuotedMessage();
-  //
-  //
-  //     // if(quotedMessage?.fromMe && (chatData.name == GrupoName.FAMILIA || chatData.name == GrupoName.TEST)){
-  //     if(quotedMessage?.fromMe && (chatData.name == GrupoName.FAMILIA || chatData.name == GrupoName.TEST)){
-  //       esBel = true;
-  //       prompt = PromptName.BELTRANUS;
-  //     }
-  //
-  //     if(!esWenchotino && !esBel && !esRoboto) return;
-  //
-  //     let messageContent = '';
-  //     let contactInfo;
-  //
-  //     if (tieneCommand && !esBel) {
-  //       const {command, content} = getMsgData(message);
-  //       contactInfo = await message.getContact();
-  //       return this.commandSelect(message, command, contactInfo.name || 'Alguien');
-  //     }
-  //
-  //     messageContent = message.body;
-  //
-  //     logMessage(message, chatData);
-  //
-  //     contactInfo = await message.getContact();
-  //     chatData.sendStateTyping();
-  //     await this.chatGPTReply(message, messageContent, contactInfo.name || 'Alguien', prompt);
-  //     chatData.clearState();
-  //     return true;
-  //   } catch (e) {
-  //     handleError(e, message);
-  //   }
-  // }
-
 
 }

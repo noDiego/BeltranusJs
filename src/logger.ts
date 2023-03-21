@@ -24,4 +24,8 @@ const logger = winston.createLogger({
   ]
 });
 
+export function setLogLevel(level: 'error' | 'warn' | 'info' | 'debug' | 'silly'){
+  logger.level = level.toLocaleLowerCase();
+}
+
 export default logger;

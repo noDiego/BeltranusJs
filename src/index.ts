@@ -17,7 +17,7 @@ client.on('ready', () => {
 });
 
 client.on('message', async (message: Message) => {
-  await beltranus.readMessage(message);
+  beltranus.readMessage(message);
 });
 
-client.initialize();//827813
+client.initialize();
