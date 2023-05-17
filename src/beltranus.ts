@@ -1,12 +1,14 @@
 import { ChatGTP } from './chatgpt';
 import { PostgresClient } from './database/postgresql';
-import { Chat, Message, MessageMedia } from 'whatsapp-web.js';
-import { getContactName, handleError, logMessage, parseCommand, tienePrefix } from './utils';
+import { Chat, Message, MessageMedia, MessageSendOptions } from 'whatsapp-web.js';
+import { getContactName, getMsgData, handleError, logMessage, parseCommand, tienePrefix } from './utils';
 import * as path from 'path';
 import * as fs from 'fs';
 import { ChatCfg, GPTRol } from './interfaces/chatinfo';
 import logger, { setLogLevel } from './logger';
 import { ChatCompletionRequestMessage } from 'openai/api';
+import { CModel, CVoices, elevenTTS } from './eleven';
+import { convertStreamToMessageMedia } from './ogg-convert';
 
 export class Beltranus {
 
@@ -121,37 +123,59 @@ export class Beltranus {
       case "reloadConfig":
         await this.loadChatConfigs();
         return message.reply('Reload OK');
+      case "sp":
+        return await this.eleven(message, CModel.SPANISH);
+      case "en":
+        return await this.eleven(message, CModel.ENGLISH);
       default:
         return true;
     }
   }
 
   private async customMp3(message: Message, commandMessage: string) {
-    const mp3Folder = __dirname + "/../mp3/";
+    const mp3Folder = __dirname + "/../ogg/";
 
     if(!commandMessage || commandMessage == ''){
       let msgAudios = '-a ';
       fs.readdir(mp3Folder, function (err, files) {
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
-          msgAudios = msgAudios + file.replace('.mp3', '') + ((i + 1) == files.length ? "" : "\n-a ")
+          msgAudios = msgAudios + file.replace('.ogg', '') + ((i + 1) == files.length ? "" : "\n-a ")
         }
         message.reply(msgAudios);
       });
       return;
     }
 
-    const pathNormalized = path.normalize(mp3Folder + commandMessage + ".mp3");
+    const pathNormalized = path.normalize(mp3Folder + commandMessage + ".ogg");
 
     // enviar el archivo de audio como un mensaje de audio
     const audioBuffer = fs.readFileSync(pathNormalized);
     const base64Audio = audioBuffer.toString('base64');
 
     // Crear un objeto MessageMedia a partir del audio
-    const audioMedia = new MessageMedia('audio/mp3', base64Audio, commandMessage+'.mp3');
+    const audioMedia = new MessageMedia('audio/ogg; codecs=opus', base64Audio, commandMessage+'.ogg');
 
-    const chat = await message.getChat();
-    return await chat.sendMessage(audioMedia);
+    const messageOptions: MessageSendOptions = { sendAudioAsVoice: true };
+    return await message.reply(audioMedia, undefined,  messageOptions);
+  }
+
+  private async eleven(message: Message, model: CModel) {
+    const {command, content} = getMsgData(message);
+    let words = content.split(' ');
+    const texto = words.slice(1).join(" ");
+    if (words[0].toLowerCase() == 'piñera') words[0] = 'pinera';
+    const voiceID = CVoices[words[0].toUpperCase()];
+
+    //Generacion de Audio
+    const audioRaw: boolean | string = await elevenTTS(voiceID, texto, model);
+    //const oggStream = convertMp3StreamToOggOpus(audioRaw);
+
+    const base64Audio = await convertStreamToMessageMedia(audioRaw);
+
+
+    const audioMedia = new MessageMedia('audio/mp3', base64Audio, 'test'+'.ogg');
+    await message.reply(audioMedia);
   }
 
 }
