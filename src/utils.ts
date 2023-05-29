@@ -36,6 +36,7 @@ export function getCLStringDate(date?: Date){
 }
 
 export function removeNonAlphanumeric(str: string): string {
+  if(!str) return str;
   const regex = /[^a-zA-Z0-9]/g;
   const normalized = str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   return normalized.replace(regex, '');
