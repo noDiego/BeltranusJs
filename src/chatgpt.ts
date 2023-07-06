@@ -21,7 +21,7 @@ export class ChatGTP {
     logger.debug(messageList);
 
     const completion = await this.openai.createChatCompletion({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4",
       messages: messageList,
     });
 
