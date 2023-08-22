@@ -99,7 +99,8 @@ export class Beltranus {
 
       const rol = msg.fromMe? GPTRol.ASSISTANT: GPTRol.USER;
       const name = msg.fromMe? undefined : (await getContactName(msg));
-      messageList.push({role: rol, name: name, content: msg.body});
+      const contentMsg = msg.fromMe? '<Respuesta generada por Bot GPT>' : msg.body;
+      messageList.push({role: rol, name: name, content: contentMsg});
     }
 
     /** Se agrega preMessage a ultimo item*/
