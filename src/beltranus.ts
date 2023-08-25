@@ -99,7 +99,7 @@ export class Beltranus {
 
       const rol = msg.fromMe? GPTRol.ASSISTANT: GPTRol.USER;
       const name = msg.fromMe? undefined : (await getContactName(msg));
-      const contentMsg = msg.fromMe? (msg.body.length > 100? msg.body.slice(0,100)+"... (Resto del mensaje)" : msg.body) : msg.body;
+      const contentMsg = msg.body; // msg.fromMe? (msg.body.length > 100? msg.body.slice(0,100)+"... (Resto del mensaje)" : msg.body) : msg.body;
       messageList.push({role: rol, name: name, content: contentMsg});
     }
 
