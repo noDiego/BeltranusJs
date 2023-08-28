@@ -28,4 +28,9 @@ client.on('authenticated', t => {
   console.log(t);
 });
 
-client.initialize();
+try {
+  client.initialize();
+}catch (e){
+  console.error('ERROR-1:');
+  console.error(e);
+}
