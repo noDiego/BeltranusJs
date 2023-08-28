@@ -7,7 +7,6 @@ const client = new Client();
 const beltranus: Beltranus = new Beltranus();
 require('dotenv').config();
 
-
 client.on('qr', qr => {
   qrcode.generate(qr, {small: true});
 });
@@ -18,6 +17,15 @@ client.on('ready', () => {
 
 client.on('message', async (message: Message) => {
   beltranus.readMessage(message);
+});
+
+client.on('auth_failure', err => {
+  console.error('auth_failure');
+  console.error(err);
+});
+client.on('authenticated', t => {
+  console.log('authenticated');
+  console.log(t);
 });
 
 client.initialize();
