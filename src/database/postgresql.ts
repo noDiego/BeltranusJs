@@ -4,8 +4,8 @@ import logger from "../logger";
 require('dotenv').config();
 
 const config = {
-  user: process.env.PSQL_USER,
-  password: process.env.PSQL_PASS,
+  user: String(process.env.PSQL_USER),
+  password: String(process.env.PSQL_PASS),
   host: process.env.PSQL_HOST,
   database: process.env.PSQL_DB,
   keepAlive: false
@@ -26,6 +26,7 @@ export class PostgresClient {
       this.client = new Client(config);
       await this.client.connect();
       this.isConnected = true;
+      logger.info(JSON.stringify(config));
       logger.info('Conexion a PostgreSQL iniciada');
     }
     this.lastQueryTime = new Date();
