@@ -7,6 +7,7 @@ const voiceid_diego = 'BWDzJ8HGBnd2LKnzyNZW';
 export enum CVoices {
   JIRO = 'BWDzJ8HGBnd2LKnzyNZW',
   DARKAYSER = 'sWhlh2UC29UCb4yl7t3p',
+  DARKAYSER2 = 'EqLKN9Ln96pqTFWnnvs2',
   CHAINER = '170l9BgOYvdt9LkK6Bkg',
   CAIN = 'zq4MUhutQpQKs3OA6fgF',
   AKARA = 'teMPK4uoK2JqyNAxMUnI',
@@ -14,8 +15,8 @@ export enum CVoices {
 }
 
 export enum CModel {
-  ENGLISH = 'eleven_monolingual_v1',
-  SPANISH = 'eleven_multilingual_v1'
+  ENGLISH = 'eleven_monolingual_v2',
+  SPANISH = 'eleven_multilingual_v2'
 }
 
 export async function elevenTTS(voice: CVoices, msg: string, model: CModel): Promise<any> {

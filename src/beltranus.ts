@@ -50,9 +50,13 @@ export class Beltranus {
 
   public async readMessage(message: Message) {
     try {
+
       /** Se reciben datos de entrada (Se extrae command ej: -a , y se extra mensaje */
       const chatData: Chat = await message.getChat();
       const { command, commandMessage } = parseCommand(message.body);
+
+      /** Si es un mensaje "Broadcast" no se procesa **/
+      if(chatData.id.user == 'status' || chatData.id._serialized == 'status@broadcast') return false;
 
       /** Se evalua si corresponde a algun bot */
       let chatCfg: ChatCfg = await this.getChatConfig(message, chatData) as ChatCfg;
