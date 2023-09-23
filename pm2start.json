@@ -2,7 +2,7 @@
     "apps": [
         {
             "name": "BeltranusJS",
-            "script": "/home/ubuntu/proyects/BeltranusJs/build/App.js",
+            "script": "/home/ubuntu/proyects/BeltranusJs/build/index.js",
             "cwd": "/home/ubuntu/proyects/BeltranusJs/",
             "exec_interpreter": "node",
             "watch": false

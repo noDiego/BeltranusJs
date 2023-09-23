@@ -1,0 +1,8 @@
+ sudo apt-get install libatk-bridge2.0-0
+ sudo apt-get install libcups2
+ sudo apt install libxkbcommon-x11-0
+ sudo apt-get install libxcomposite-dev
+ sudo apt-get install libxdamage1
+ sudo apt-get install libxrandr2
+ sudo apt-get install libpangocairo-1.0-0
+ sudo apt-get install libasound2
