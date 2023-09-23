@@ -3,7 +3,6 @@ import { OpenAIREsponse } from './interfaces/predict-response';
 import logger from './logger';
 import { Readable } from 'stream';
 
-const voiceid_diego = 'BWDzJ8HGBnd2LKnzyNZW';
 export enum CVoices {
   JIRO = 'BWDzJ8HGBnd2LKnzyNZW',
   DARKAYSER = 'sWhlh2UC29UCb4yl7t3p',

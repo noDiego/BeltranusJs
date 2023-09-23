@@ -19,7 +19,7 @@
     "pg": "^8.9.0",
     "qrcode-terminal": "^0.12.0",
     "tempy": "^3.0.0",
-    "whatsapp-web.js": "^1.20.0",
+    "whatsapp-web.js": "^1.22.1",
     "winston": "^3.8.2",
     "winston-daily-rotate-file": "^4.7.1"
   },

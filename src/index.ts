@@ -20,17 +20,14 @@ client.on('message', async (message: Message) => {
 });
 
 client.on('auth_failure', err => {
-  console.error('auth_failure');
   console.error(err);
 });
 client.on('authenticated', t => {
-  console.log('authenticated');
   console.log(t);
 });
 
 try {
   client.initialize();
 }catch (e){
-  console.error('ERROR-1:');
-  console.error(e);
+  console.error('ERROR:', e);
 }
