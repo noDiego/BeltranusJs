@@ -5,11 +5,13 @@ import { ChatCompletionRequestMessage } from 'openai/api';
 export class ChatGTP {
 
   private openai: OpenAIApi;
+  private gptModel: string;
 
   constructor() {
     const configuration = new Configuration({
       apiKey: process.env.OPENAI_API_KEY,
     });
+    this.gptModel = <string>process.env.GPT_MODEL;
     this.openai = new OpenAIApi(configuration);
   }
 
@@ -21,7 +23,7 @@ export class ChatGTP {
     logger.debug(messageList);
 
     const completion = await this.openai.createChatCompletion({
-      model: "gpt-4",
+      model: this.gptModel,
       messages: messageList,
     });
 
