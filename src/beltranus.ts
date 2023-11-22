@@ -80,8 +80,10 @@ export class Beltranus {
       const chatResponseString = await this.chatGPTReply(chatData, chatCfg);
       chatData.clearState();
 
+      if(!chatResponseString) return;
+
       /** Se retorna mensaje */
-      return message.reply(<string> chatResponseString);
+      return message.reply(chatResponseString);
     } catch (e) {
       handleError(e, message);
     }
@@ -93,7 +95,7 @@ export class Beltranus {
     const messageList: ChatCompletionRequestMessage[] = [];
 
     /**Primer elemento será el mensaje de sistema*/
-    messageList.push({role: GPTRol.SYSTEM, content: chatCfg.prompt_text});
+      messageList.push({role: GPTRol.SYSTEM, content: chatCfg.prompt_text});
 
     /**Se recorren los ultimos 'limit' mensajes para enviarlos en orden */
     const lastMessages = await chatData.fetchMessages({ limit: chatCfg.limit });
@@ -103,7 +105,7 @@ export class Beltranus {
 
       /** Si el mensaje es !nuevoTema se considera historial solo de aqui en adelante **/
       if(msg.body == '!nuevoTema') {
-        messageList.length = 0;
+        messageList.splice(1);
         continue;
       }
 
