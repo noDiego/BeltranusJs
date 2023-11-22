@@ -116,7 +116,7 @@ export class Beltranus {
     }
 
     /** Si no hay mensajes nuevos retorna sin accion **/
-    if(messageList.length == 0) return;
+    if(messageList.length == 1) return;
 
     /** Se agrega preMessage a ultimo item*/
     if(chatCfg.premsg)
