@@ -81,7 +81,7 @@ export class Beltranus {
       chatData.clearState();
 
       /** Se retorna mensaje */
-      return message.reply(chatResponseString);
+      return message.reply(<string> chatResponseString);
     } catch (e) {
       handleError(e, message);
     }
@@ -101,11 +101,20 @@ export class Beltranus {
 
       if(!msg.body) continue; //TODO: Identificar audios y transcribir a texto. Por mientras se omiten mensajes sin texto
 
+      /** Si el mensaje es !nuevoTema se considera historial solo de aqui en adelante **/
+      if(msg.body == '!nuevoTema') {
+        messageList.length = 0;
+        continue;
+      }
+
       const rol = msg.fromMe? GPTRol.ASSISTANT: GPTRol.USER;
       const name = msg.fromMe? undefined : (await getContactName(msg));
       const contentMsg = msg.body; // msg.fromMe? (msg.body.length > 100? msg.body.slice(0,100)+"... (Resto del mensaje)" : msg.body) : msg.body;
       messageList.push({role: rol, name: name, content: contentMsg});
     }
+
+    /** Si no hay mensajes nuevos retorna sin accion **/
+    if(messageList.length == 0) return;
 
     /** Se agrega preMessage a ultimo item*/
     if(chatCfg.premsg)
