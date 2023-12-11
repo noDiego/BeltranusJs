@@ -104,7 +104,7 @@ export class Beltranus {
       if(!msg.body) continue; //TODO: Identificar audios y transcribir a texto. Por mientras se omiten mensajes sin texto
 
       /** Si el mensaje es !nuevoTema se considera historial solo de aqui en adelante **/
-      if(msg.body == '!nuevoTema') {
+      if(msg.body == '!nuevoTema' || msg.body == '!n') {
         messageList.splice(1);
         continue;
       }
