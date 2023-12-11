@@ -7,6 +7,7 @@ const config = {
   user: String(process.env.PSQL_USER),
   password: String(process.env.PSQL_PASS),
   host: process.env.PSQL_HOST,
+  port: process.env.PSQL_PORT,
   database: process.env.PSQL_DB,
   keepAlive: false
 }
