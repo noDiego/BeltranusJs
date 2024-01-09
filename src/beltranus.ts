@@ -92,6 +92,8 @@ export class Beltranus {
 
   private async chatGPTReply(chatData: Chat, chatCfg: ChatCfg) {
 
+    const actualDate = new Date();
+
     /**Se arma array de mensajes*/
     const messageList: ChatCompletionRequestMessage[] = [];
 
@@ -102,12 +104,14 @@ export class Beltranus {
     const lastMessages = await chatData.fetchMessages({ limit: chatCfg.limit });
     for (const msg of lastMessages) {
 
+      /** Se valida si el mensaje fue escrito hace menos de 24 horas, si es más antiguo no se considera **/
+      const msgDate = new Date(msg.timestamp*1000);
+      const diferenciaHoras = (actualDate.getDate() - msgDate.getDate()) / (1000 * 60 * 60);
+      if (diferenciaHoras > 24) continue;
+
       if(!msg.body) continue; //TODO: Identificar audios y transcribir a texto. Por mientras se omiten mensajes sin texto
 
-      console.log('Procesando mensaje', msg.body);
-      console.log(msg.timestamp);
-
-      /** Si el mensaje es !nuevoTema se considera historial solo de aqui en adelante **/
+      /** Si el mensaje es !nuevoTema o !n se considera historial solo de aqui en adelante **/
       if(msg.body == '!nuevoTema' || msg.body == '!n') {
         messageList.splice(1);
         continue;
