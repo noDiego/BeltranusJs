@@ -59,7 +59,8 @@ export class Beltranus {
       if(chatData.id.user == 'status' || chatData.id._serialized == 'status@broadcast') return false;
 
       /** Se evalua si corresponde a algun bot */
-      let chatCfg: ChatCfg = await this.getChatConfig(message, chatData) as ChatCfg;
+       let chatCfg: ChatCfg = await this.getChatConfig(message, chatData) as ChatCfg;
+
       if(chatCfg == null && !command) return false;
 
       logMessage(message, chatData);
@@ -102,6 +103,9 @@ export class Beltranus {
     for (const msg of lastMessages) {
 
       if(!msg.body) continue; //TODO: Identificar audios y transcribir a texto. Por mientras se omiten mensajes sin texto
+
+      console.log('Procesando mensaje', msg.body);
+      console.log(msg.timestamp);
 
       /** Si el mensaje es !nuevoTema se considera historial solo de aqui en adelante **/
       if(msg.body == '!nuevoTema' || msg.body == '!n') {
