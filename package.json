@@ -21,7 +21,7 @@
     "pg": "^8.9.0",
     "qrcode-terminal": "^0.12.0",
     "tempy": "^3.0.0",
-    "whatsapp-web.js": "^1.22.1",
+    "whatsapp-web.js": "https://github.com/Julzk/whatsapp-web.js/tarball/jkr_hotfix_8",
     "winston": "^3.8.2",
     "winston-daily-rotate-file": "^4.7.1"
   },
