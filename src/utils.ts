@@ -62,3 +62,11 @@ export async function getContactName(message: Message){
   const name = contactInfo.name? contactInfo.name: contactInfo.pushname;
   return removeNonAlphanumeric(name);
 }
+
+export function randomNumber(min, max) {
+  return Math.floor(Math.random() * (max - min + 1) + min);
+}
+
+export async function sleep(miliseconds) {
+  return new Promise(resolve => setTimeout(resolve, miliseconds));
+}

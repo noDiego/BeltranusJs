@@ -9,6 +9,10 @@ import logger, { setLogLevel } from './logger';
 import { ChatCompletionRequestMessage } from 'openai/api';
 import { CModel, CVoices, elevenTTS } from './eleven';
 import { convertStreamToMessageMedia } from './ogg-convert';
+import FakeyouService from './services/fakeyou';
+import { FakeyouModel } from './interfaces/fakeyou.interfaces';
+import { getCloudFile } from './http';
+import { getMp3Message } from './services/google';
 
 export class Beltranus {
 
@@ -16,9 +20,11 @@ export class Beltranus {
   private busy = false;
   private db: PostgresClient = PostgresClient.getInstance();
   private chatConfigs: ChatCfg[];
+  private fakeyouService: FakeyouService;
 
   public constructor() {
     this.chatGpt = new ChatGTP();
+    this.fakeyouService = new FakeyouService();
     this.loadChatConfigs().then(()=>{logger.info('ChatConfigs Loaded')});
   }
 
@@ -71,7 +77,7 @@ export class Beltranus {
       /** Se evalua si debe enviar a flujo comandos **/
       if(!!command){
         await chatData.sendStateTyping();
-        await this.commandSelect(message, contactInfo?.name || 'Alguien', chatCfg);
+        await this.commandSelect(message, contactInfo?.name || 'Alguien', chatCfg, chatData);
         await chatData.clearState();
         return true;
       }
@@ -87,6 +93,31 @@ export class Beltranus {
       return message.reply(chatResponseString);
     } catch (e) {
       handleError(e, message);
+    }
+  }
+
+  private async commandSelect(message: Message, contactName: string, chatCfg: ChatCfg, chatData: Chat) {
+    const { command, commandMessage } = parseCommand(message.body);
+    switch (command) {
+      case "a":
+        return await this.customMp3(message, <string> commandMessage);
+      case "setLogLevel":
+        setLogLevel(commandMessage == 'debug' ? 'debug': 'info');
+        return message.reply(`Log Level: "${commandMessage}"`);
+      case "reloadConfig":
+        await this.loadChatConfigs();
+        return message.reply('Reload OK');
+      case "fakeyou":
+        if(message.body == '-fakeyou') return await this.fakeyouList(message);
+        return await this.fakeyou(message, chatData);
+      case "sp":
+        return await this.eleven(message, CModel.SPANISH);
+      case "en":
+        return await this.eleven(message, CModel.ENGLISH);
+      case "tts":
+        return await this.ttsgoogle(message);
+      default:
+        return true;
     }
   }
 
@@ -106,7 +137,7 @@ export class Beltranus {
 
       /** Se valida si el mensaje fue escrito hace menos de 24 horas, si es más antiguo no se considera **/
       const msgDate = new Date(msg.timestamp*1000);
-      const diferenciaHoras = (actualDate.getDate() - msgDate.getDate()) / (1000 * 60 * 60);
+      const diferenciaHoras = (actualDate.getTime() - msgDate.getTime()) / (1000 * 60 * 60);
       if (diferenciaHoras > 24) continue;
 
       if(!msg.body) continue; //TODO: Identificar audios y transcribir a texto. Por mientras se omiten mensajes sin texto
@@ -132,28 +163,6 @@ export class Beltranus {
 
     /** Se envia mensaje y se retorna texto de respuesta */
     return await this.chatGpt.sendMessages(messageList);
-  }
-
-
-
-  private async commandSelect(message: Message, contactName: string, chatCfg: ChatCfg) {
-    const { command, commandMessage } = parseCommand(message.body);
-    switch (command) {
-      case "a":
-        return await this.customMp3(message, <string> commandMessage);
-      case "setLogLevel":
-        setLogLevel(commandMessage == 'debug' ? 'debug': 'info');
-        return message.reply(`Log Level: "${commandMessage}"`);
-      case "reloadConfig":
-        await this.loadChatConfigs();
-        return message.reply('Reload OK');
-      case "sp":
-        return await this.eleven(message, CModel.SPANISH);
-      case "en":
-        return await this.eleven(message, CModel.ENGLISH);
-      default:
-        return true;
-    }
   }
 
   private async customMp3(message: Message, commandMessage: string) {
@@ -197,9 +206,115 @@ export class Beltranus {
 
     const base64Audio = await convertStreamToMessageMedia(audioRaw);
 
+    const audioMedia = new MessageMedia('audio/mp3', base64Audio, 'test'+'.ogg');
+    await message.reply(audioMedia);
+  }
+
+  private async fakeyouList(message: Message){
+    const models = this.fakeyouService.getModelList();
+    let msgModels = 'Ejemplo: "-fakeyou 8r1s06 hola soy wencho"\n\n'; // Incluye el mensaje de ejemplo en el primer mensaje.
+    let messagesToSend: string[] = [];
+
+    for (const model of models) {
+      const newLine = `${model.model_token.replace('TM:', '').substring(0, 4)} - ${model.title}\n`;
+      if (msgModels.length + newLine.length > 64000) {
+        // Agrega el mensaje actual a la lista de mensajes a enviar.
+        messagesToSend.push(msgModels);
+        msgModels = newLine;
+      } else {
+        msgModels += newLine;
+      }
+    }
+
+    if (msgModels.length > 0) {
+      messagesToSend.push(msgModels);
+    }
+
+    for (const msg of messagesToSend) {
+      await message.reply(msg);
+    }
+
+    return;
+  }
+
+  private async fakeyou(message: Message, chatData: Chat){
+    const {command, content} = getMsgData(message);
+    let texto = '';
+
+    /** Se revisa el model ingresado **/
+    let modelToken = content.split(' ')[0];
+
+    /** Se revisa si hay un model entre comillas ingresado **/
+    const coincidencias = content.match(/"([^"]*)"/);
+    if (coincidencias) {
+      modelToken = coincidencias[1];
+      texto = content.split('"').slice(2).join('"').trim(); //Se genera el texto que se enviará para generar TTS
+    }
+    else texto = content.split(' ').slice(1).join(" "); //Se genera el texto que se enviará para generar TTS
+
+    const titleWithSpaces = modelToken.replace('_',' ');
+    const model: FakeyouModel = this.fakeyouService.getModelList().find(m => m.title.toLowerCase().includes(titleWithSpaces.toLowerCase())
+      || m.title.toLowerCase().includes(modelToken.toLowerCase())
+      || m.model_token.includes('TM:'+modelToken)) as FakeyouModel;
+
+    logger.debug('Encontrado modelo:'+model.title);
+
+    if(!model) {
+      return message.reply(`No existe el model: ${modelToken}`);
+    }
+
+    /** Se evalua el texto escrito despues del model **/
+    if(texto == '') { //Si no hay texto en el espacio para mensaje se tomará el último mensaje generado por el bot
+      const lastBotMessage = await this.getLastBotMessage(chatData);
+      texto = lastBotMessage
+    }
+
+    /** Se envia texto y model para generar audio **/
+    try {
+      logger.debug("Generando audio...");
+      const audioURL = await this.fakeyouService.makeTTS(model, texto);
+
+      /** Se procesa audio URL **/
+      const streamAudio = await getCloudFile(String(audioURL));
+
+      logger.debug("Generacion de audio OK, Reproduciendo");
+
+      const base64Audio = await convertStreamToMessageMedia(streamAudio);
+      const filename = model.title.split('(')[0].trim()+".wav";
+      const audioMedia = new MessageMedia('audio/mp3', base64Audio, filename);
+      return await message.reply(audioMedia);
+
+    }catch (e){
+      logger.error(e);
+      return await message.reply('No pude crear el audio ):');
+    }
+
+  }
+
+  private async ttsgoogle(message: Message) {
+    const {command, content} = getMsgData(message);
+    let words = content.split(' ');
+    const texto = words.slice(1).join(" ");
+    if (words[0].toLowerCase() == 'piñera') words[0] = 'pinera';
+    const voiceID = CVoices[words[0].toUpperCase()];
+
+    //Generacion de Audio
+    const responseData = await getMp3Message(content, 'FEMALE');
+    //const oggStream = convertMp3StreamToOggOpus(audioRaw);
+
+    const base64Audio = await convertStreamToMessageMedia(responseData.audioContent);
 
     const audioMedia = new MessageMedia('audio/mp3', base64Audio, 'test'+'.ogg');
     await message.reply(audioMedia);
+  }
+
+  private async getLastBotMessage(chatData: Chat) {
+    const lastMessages = await chatData.fetchMessages({limit: 12});
+    let lastMessageBot: string = '';
+    for (const msg of lastMessages) {
+      if(msg.fromMe && msg.body.length>1) lastMessageBot = msg.body;
+    }
+    return lastMessageBot;
   }
 
 }
