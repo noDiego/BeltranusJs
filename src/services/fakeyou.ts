@@ -14,7 +14,10 @@ class FakeyouService {
       password: CONFIG.fakeyou.credentials.password
     });
     this.fyClient.start().then(()=>{
-      logger.info('Fakeyou started OK')
+      logger.info('Fakeyou started OK');
+      this.loadModelList().then(()=>{
+        logger.info('Fakeyou Models loaded');
+      });
     });
   }
 

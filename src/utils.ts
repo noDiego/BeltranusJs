@@ -1,6 +1,8 @@
 import {Chat, Message} from 'whatsapp-web.js';
 import logger from './logger';
 import moment from "moment-timezone";
+import ffmpeg from 'fluent-ffmpeg';
+import { PassThrough } from 'stream';
 
 export function getMsgData(message: Message): {command: string, content: string}{
   const command = message.body.split(' ')[0];
@@ -69,4 +71,23 @@ export function randomNumber(min, max) {
 
 export async function sleep(miliseconds) {
   return new Promise(resolve => setTimeout(resolve, miliseconds));
+}
+
+export function convertWavToMp3(wavStream: any): PassThrough {
+  // Crear un stream de escritura para el archivo de salida MP3
+  const mp3Stream = new PassThrough();
+
+  // Iniciar la conversión usando fluent-ffmpeg
+  ffmpeg(wavStream)
+    .audioCodec('libmp3lame') // Establecer el codec de audio a MP3
+    .format('mp3')           // Establecer el formato de salida a MP3
+    .on('end', () => {
+      console.log('Conversión completada.');
+    })
+    .on('error', (err: Error) => {
+      console.error('Error al convertir:', err.message);
+    })
+    .pipe(mp3Stream);        // Enviar el stream convertido a mp3Stream
+
+  return mp3Stream; // Devolver el stream MP3 para su uso posterior
 }

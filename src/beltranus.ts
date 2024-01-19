@@ -1,7 +1,7 @@
 import { ChatGTP } from './chatgpt';
 import { PostgresClient } from './database/postgresql';
 import { Chat, Message, MessageMedia, MessageSendOptions } from 'whatsapp-web.js';
-import { getContactName, getMsgData, handleError, logMessage, parseCommand, tienePrefix } from './utils';
+import { convertWavToMp3, getContactName, getMsgData, handleError, logMessage, parseCommand, tienePrefix } from './utils';
 import * as path from 'path';
 import * as fs from 'fs';
 import { ChatCfg, GPTRol } from './interfaces/chatinfo';
@@ -276,19 +276,20 @@ export class Beltranus {
 
       /** Se procesa audio URL **/
       const streamAudio = await getCloudFile(String(audioURL));
+      const streamMP3 = convertWavToMp3(streamAudio);
 
       logger.debug("Generacion de audio OK, Reproduciendo");
 
-      const base64Audio = await convertStreamToMessageMedia(streamAudio);
+      const base64Audio = await convertStreamToMessageMedia(streamMP3);
       const filename = model.title.split('(')[0].trim()+".wav";
-      const audioMedia = new MessageMedia('audio/mp3', base64Audio, filename);
+       const audioMedia = new MessageMedia('audio/wav', base64Audio, filename);
+      //const audioMedia = await MessageMedia.fromUrl(base64Audio, { filename: filename })
       return await message.reply(audioMedia);
 
     }catch (e){
       logger.error(e);
       return await message.reply('No pude crear el audio ):');
     }
-
   }
 
   private async ttsgoogle(message: Message) {
