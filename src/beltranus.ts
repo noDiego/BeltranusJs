@@ -6,13 +6,13 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { ChatCfg, GPTRol } from './interfaces/chatinfo';
 import logger, { setLogLevel } from './logger';
-import { ChatCompletionRequestMessage } from 'openai/api';
 import { CModel, CVoices, elevenTTS } from './eleven';
 import { convertStreamToMessageMedia } from './ogg-convert';
 import FakeyouService from './services/fakeyou';
 import { FakeyouModel } from './interfaces/fakeyou.interfaces';
 import { getCloudFile } from './http';
 import { getMp3Message } from './services/google';
+import { ChatCompletionContentPart } from 'openai/src/resources/chat/completions';
 
 export class Beltranus {
 
@@ -126,7 +126,7 @@ export class Beltranus {
     const actualDate = new Date();
 
     /**Se arma array de mensajes*/
-    const messageList: ChatCompletionRequestMessage[] = [];
+    const messageList: any[] = [];
 
     /**Primer elemento será el mensaje de sistema*/
       messageList.push({role: GPTRol.SYSTEM, content: chatCfg.prompt_text});
@@ -140,7 +140,10 @@ export class Beltranus {
       const diferenciaHoras = (actualDate.getTime() - msgDate.getTime()) / (1000 * 60 * 60);
       if (diferenciaHoras > 24) continue;
 
-      if(!msg.body) continue; //TODO: Identificar audios y transcribir a texto. Por mientras se omiten mensajes sin texto
+      if(!msg.body && !msg.hasMedia) continue; //TODO: Identificar audios y transcribir a texto. Por mientras se omiten mensajes sin texto
+
+      /** Se revisa si el mensaje incluye media**/
+      const media = msg.hasMedia ? await msg.downloadMedia() : null;
 
       /** Si el mensaje es !nuevoTema o !n se considera historial solo de aqui en adelante **/
       if(msg.body == '!nuevoTema' || msg.body == '!n') {
@@ -149,9 +152,16 @@ export class Beltranus {
       }
 
       const rol = msg.fromMe? GPTRol.ASSISTANT: GPTRol.USER;
-      const name = msg.fromMe? undefined : (await getContactName(msg));
-      const contentMsg = msg.body; // msg.fromMe? (msg.body.length > 100? msg.body.slice(0,100)+"... (Resto del mensaje)" : msg.body) : msg.body;
-      messageList.push({role: rol, name: name, content: contentMsg});
+      const name = msg.fromMe? 'assistant' : (await getContactName(msg));
+
+      const content: string|Array<ChatCompletionContentPart> = [];
+      if(msg.hasMedia && media) content.push({type: 'image_url',  "image_url": {
+          "url": `data:image/jpeg;base64,${media.data}`
+        }});
+      if(msg.body) content.push({type: 'text', text: msg.body});
+
+
+      messageList.push({role: rol, name: name, content: content});
     }
 
     /** Si no hay mensajes nuevos retorna sin accion **/
