@@ -3,6 +3,9 @@ require('dotenv').config();
 export const CONFIG = {
   appName: 'Beltranus',
   node_env: process.env.NODE_ENV || 'development',
+  chatgpt:{
+    maxImages: 2
+  },
   database:{
     user: process.env.PSQL_USER,
     pass: process.env.PSQL_PASS,

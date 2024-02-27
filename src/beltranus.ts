@@ -13,6 +13,7 @@ import { FakeyouModel } from './interfaces/fakeyou.interfaces';
 import { getCloudFile } from './http';
 import { getMp3Message } from './services/google';
 import { ChatCompletionContentPart } from 'openai/src/resources/chat/completions';
+import { CONFIG } from './config';
 
 export class Beltranus {
 
@@ -21,6 +22,7 @@ export class Beltranus {
   private db: PostgresClient = PostgresClient.getInstance();
   private chatConfigs: ChatCfg[];
   private fakeyouService: FakeyouService;
+  private maxSentImages = CONFIG.chatgpt.maxImages;
 
   public constructor() {
     this.chatGpt = new ChatGTP();
@@ -129,47 +131,60 @@ export class Beltranus {
     const messageList: any[] = [];
 
     /**Primer elemento será el mensaje de sistema*/
-      messageList.push({role: GPTRol.SYSTEM, content: chatCfg.prompt_text});
+    messageList.push({ role: GPTRol.SYSTEM, content: chatCfg.prompt_text });
 
     /**Se recorren los ultimos 'limit' mensajes para enviarlos en orden */
     const lastMessages = await chatData.fetchMessages({ limit: chatCfg.limit });
     for (const msg of lastMessages) {
 
       /** Se valida si el mensaje fue escrito hace menos de 24 horas, si es más antiguo no se considera **/
-      const msgDate = new Date(msg.timestamp*1000);
+      const msgDate = new Date(msg.timestamp * 1000);
       const diferenciaHoras = (actualDate.getTime() - msgDate.getTime()) / (1000 * 60 * 60);
       if (diferenciaHoras > 24) continue;
 
-      if(!msg.body && !msg.hasMedia) continue; //TODO: Identificar audios y transcribir a texto. Por mientras se omiten mensajes sin texto
+      if (!msg.body && !msg.hasMedia) continue;
 
       /** Se revisa si el mensaje incluye media**/
       const media = msg.hasMedia ? await msg.downloadMedia() : null;
 
       /** Si el mensaje es !nuevoTema o !n se considera historial solo de aqui en adelante **/
-      if(msg.body == '!nuevoTema' || msg.body == '!n') {
+      if (msg.body == '!nuevoTema' || msg.body == '!n') {
         messageList.splice(1);
         continue;
       }
 
-      const rol = msg.fromMe? GPTRol.ASSISTANT: GPTRol.USER;
-      const name = msg.fromMe? 'assistant' : (await getContactName(msg));
+      const rol = msg.fromMe ? GPTRol.ASSISTANT : GPTRol.USER;
+      const name = msg.fromMe ? 'assistant' : (await getContactName(msg));
 
-      const content: string|Array<ChatCompletionContentPart> = [];
-      if(msg.hasMedia && media) content.push({type: 'image_url',  "image_url": {
-          "url": `data:image/jpeg;base64,${media.data}`
-        }});
-      if(msg.body) content.push({type: 'text', text: msg.body});
+      const content: string | Array<ChatCompletionContentPart> = [];
+      if (msg.hasMedia && media) {
+        content.push({
+          type: 'image_url', "image_url": {
+            "url": `data:image/jpeg;base64,${media.data}`
+          }
+        });
+      }
 
+      if (msg.body) content.push({ type: 'text', text: msg.body });
 
-      messageList.push({role: rol, name: name, content: content});
+      messageList.push({ role: rol, name: name, content: content });
+    }
+
+    /** Se recorren los mensajes para limitar la cantidad de imagenes a solo las "maxSentImages" ultimas  */
+    let imageCount = 0;
+    for (let i = messageList.length - 1; i >= 0; i--) {
+      if (messageList[i].content.type === 'image_url') {
+        imageCount++;
+        if (imageCount > this.maxSentImages) messageList.splice(i, 1);
+      }
     }
 
     /** Si no hay mensajes nuevos retorna sin accion **/
-    if(messageList.length == 1) return;
+    if (messageList.length == 1) return;
 
-    /** Se agrega preMessage a ultimo item*/
-    if(chatCfg.premsg)
-      messageList[messageList.length-1].content = (chatCfg.premsg+" "+messageList[messageList.length-1].content).trim();
+    /** Se agrega preMessage a ultimo item */
+    if (chatCfg.premsg)
+      messageList[messageList.length - 1].content = (chatCfg.premsg + " " + messageList[messageList.length - 1].content).trim();
 
     /** Se envia mensaje y se retorna texto de respuesta */
     return await this.chatGpt.sendMessages(messageList);

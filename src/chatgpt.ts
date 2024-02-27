@@ -24,7 +24,7 @@ export class ChatGTP {
     const completion = await this.openai.chat.completions.create({
       model: this.gptModel,
       messages: messageList,
-      max_tokens: 256,
+      max_tokens: 512,
       top_p: 1,
       frequency_penalty: 0.5,
       presence_penalty: 0
