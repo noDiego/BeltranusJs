@@ -1,8 +1,8 @@
 import { FakeyouModel, FakeyouModelResponse } from '../interfaces/fakeyou.interfaces';
-import { httpGet } from '../http';
 import { CONFIG } from '../config';
 import FakeYou from 'fakeyou.js';
 import logger from '../logger';
+import { httpGet } from '../utils';
 
 class FakeyouService {
   private fyClient;

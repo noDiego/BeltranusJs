@@ -1,16 +1,18 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
-import { OpenAIREsponse } from './interfaces/predict-response';
-import logger from './logger';
+import { OpenAIREsponse } from '../interfaces/predict-response';
+import logger from '../logger';
 import { Readable } from 'stream';
 
 export enum CVoices {
   JIRO = 'BWDzJ8HGBnd2LKnzyNZW',
-  DARKAYSER = 'sWhlh2UC29UCb4yl7t3p',
-  DARKAYSER2 = 'EqLKN9Ln96pqTFWnnvs2',
+  DARKAYSER = 'kSv7ExgVZm6PJMseGkKu',
   CHAINER = '170l9BgOYvdt9LkK6Bkg',
   CAIN = 'zq4MUhutQpQKs3OA6fgF',
   AKARA = 'teMPK4uoK2JqyNAxMUnI',
   PINERA = 'nppBs8tfCJ2smgETSuOb',
+  PINOCHO = 'qcv1vSIo5ukABa4OPPm2',
+  WENCHO = 'cNX4JVnC2gBtWgNynNSt',
+  NOXFER = 'jlV396zr6NdomGXoB5aK',
 }
 
 export enum CModel {

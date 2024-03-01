@@ -3,6 +3,8 @@ import logger from './logger';
 import moment from "moment-timezone";
 import ffmpeg from 'fluent-ffmpeg';
 import { PassThrough } from 'stream';
+import axios from 'axios';
+import getStream from 'get-stream';
 
 export function getMsgData(message: Message): {command: string, content: string}{
   const command = message.body.split(' ')[0];
@@ -24,11 +26,7 @@ export function logMessage(message: Message, chat: Chat){
   );
 }
 
-export function handleError(e: any, message: Message){
-  logger.error(e.message);
-}
-
-export function tienePrefix(bodyMessage: string, prefix: string): boolean {
+export function includePrefix(bodyMessage: string, prefix: string): boolean {
   const regex = new RegExp(`(^|\\s)${prefix}($|[!?.]|\\s|,\\s)`, 'i');
   return regex.test(bodyMessage);
 }
@@ -61,7 +59,7 @@ export function parseCommand(input: string): { command?: string, commandMessage?
 
 export async function getContactName(message: Message){
   const contactInfo = await message.getContact();
-  const name = contactInfo.name? contactInfo.name: contactInfo.pushname;
+  const name = contactInfo.name || contactInfo.shortName || contactInfo.pushname || contactInfo.number;
   return removeNonAlphanumeric(name);
 }
 
@@ -82,7 +80,6 @@ export function convertWavToMp3(wavStream: any): PassThrough {
     .audioCodec('libmp3lame') // Establecer el codec de audio a MP3
     .format('mp3')           // Establecer el formato de salida a MP3
     .on('end', () => {
-      console.log('Conversión completada.');
     })
     .on('error', (err: Error) => {
       console.error('Error al convertir:', err.message);
@@ -90,4 +87,38 @@ export function convertWavToMp3(wavStream: any): PassThrough {
     .pipe(mp3Stream);        // Enviar el stream convertido a mp3Stream
 
   return mp3Stream; // Devolver el stream MP3 para su uso posterior
+}
+
+export async function httpGet(url: string) {
+  try {
+    const response = await axios.get(url);
+    return response.data;
+  } catch (error) {
+    logger.error(error);
+  }
+}
+
+export async function convertStreamToMessageMedia(audioStream) {
+  // Convertir el flujo a un Buffer
+  const audioBuffer = await getStream.buffer(audioStream);
+
+  // Convertir el Buffer a una cadena Base64
+  return audioBuffer.toString('base64');
+}
+
+export async function getCloudFile(url:string){
+  const response = await axios({
+    method: 'get',
+    url: url,
+    responseType: 'stream',
+  });
+  return response.data;
+}
+
+export function capitalizeString(str) {
+  // Verifica si el string está vacío
+  if (str.length === 0) return str;
+
+  // Convierte la primera letra a mayúscula y concatena con el resto del string.
+  return str.charAt(0).toUpperCase() + str.slice(1);
 }
