@@ -14,7 +14,6 @@ import {
 import { GPTRol } from './interfaces/gpt-rol';
 import logger from './logger';
 import OpenAI from 'openai';
-import ChatCompletionContentPart = OpenAI.ChatCompletionContentPart;
 import FakeyouService from './services/fakeyou';
 import { PostgresClient } from './database/postgresql';
 import { ChatCfg } from './interfaces/chatinfo';
@@ -23,6 +22,7 @@ import { CModel, CVoices, elevenTTS } from './services/eleven';
 import * as fs from 'fs';
 import path from 'path';
 import { FakeyouModel } from './interfaces/fakeyou.interfaces';
+import ChatCompletionContentPart = OpenAI.ChatCompletionContentPart;
 
 export class Beltranus {
 
@@ -30,7 +30,7 @@ export class Beltranus {
   private fakeyouService: FakeyouService;
   private db: PostgresClient;
   private chatConfigs: ChatCfg[];
-  private allowedTypes = [MessageTypes.STICKER, MessageTypes.TEXT, MessageTypes.IMAGE];
+  private allowedTypes = [MessageTypes.STICKER, MessageTypes.TEXT, MessageTypes.IMAGE, MessageTypes.AUDIO, MessageTypes.VOICE];
 
   public constructor() {
     this.chatGpt = new ChatGTP();
@@ -93,7 +93,7 @@ export class Beltranus {
       // If it's a "Broadcast" message, it's not processed
       if(chatData.id.user == 'status' || chatData.id._serialized == 'status@broadcast') return false;
 
-      if(!this.allowedTypes.includes(message.type)) return false;
+      if(!this.allowedTypes.includes(message.type) || message.type == MessageTypes.AUDIO ||message.type == MessageTypes.VOICE) return false;
 
       // Se evalua si corresponde a algun bot
       let chatCfg: ChatCfg = await this.getChatConfig(message, chatData) as ChatCfg;
@@ -209,7 +209,7 @@ export class Beltranus {
     // Retrieve the last 'limit' number of messages to send them in order
     const fetchedMessages = await chatData.fetchMessages({ limit: chatCfg.limit });
     // Check for "-reset" command in chat history to potentially restart context
-    const resetCommands = ["-reset", "-r", "-n"];
+    const resetCommands = ["-reset", "-r", "!n"];
     const resetIndex = fetchedMessages.map(msg => msg.body).reduce((lastIndex, currentBody, currentIndex) => {
       return resetCommands.includes(currentBody) ? currentIndex : lastIndex;
     }, -1);
@@ -221,6 +221,7 @@ export class Beltranus {
       const msgDate = new Date(msg.timestamp * 1000);
       const timeDifferenceHours = (actualDate.getTime() - msgDate.getTime()) / (1000 * 60 * 60);
       const isImage = msg.type == MessageTypes.STICKER || msg.type === MessageTypes.IMAGE;
+      const isAudio = msg.type == MessageTypes.AUDIO || msg.type === MessageTypes.VOICE;
 
       if (timeDifferenceHours > chatCfg.hourslimit) continue;
 
@@ -241,6 +242,8 @@ export class Beltranus {
           }
         });
       }
+
+      if (isAudio) content.push({ type: 'text', text: '<Audio Message>' });
 
       if (msg.body) content.push({ type: 'text', text: msg.body });
 
