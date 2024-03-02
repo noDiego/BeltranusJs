@@ -59,8 +59,10 @@ function buildPrompt(botName, maxMsgLimit, characterslimit, prompt_info){
     - You have a short-term memory able to recall only the last ${maxMsgLimit} messages and forget anything older than 24 hours. 
     - When images are sent to you, remember that you can only consider the latest ${botConfig.maxImages} images for your tasks.
     - If users need to reset any ongoing task or context, they should use the "-reset" command. This will cause you to not remember anything that was said previously to the command.
-    ${botConfig.imageCreationEnabled ? '- If a user requests an image, guide them to use the command “-image <description>”. For example, respond with, “To create an image, please use the command \'-image a dancing dog\'.”' : ''}
-    ${botConfig.audioCreationEnabled ? '- If a user asks you to say something with audio, instruct them to use “-speak <text>”. Example response: “To generate speech, use \'-speak hello everyone!\', or just \'-speak\' to use the last message I sent.”' : ''}
+    ${botConfig.imageCreationEnabled ? '- You can create images. If a user requests an image, guide them to use the command “-image <description>”.' +
+    ' For example, respond with, “To create an image, please use the command \'-image a dancing dog\'.”' : ''}
+    ${botConfig.audioCreationEnabled ? '- You can create audios. If a user asks you to say something with audio, instruct them to use “-speak' +
+    ' <text>”. Example response: “To generate speech, use \'-speak hello everyone!\', or just \'-speak\' to use the last message I sent.”' : ''}
     ${botConfig.imageCreationEnabled || botConfig.audioCreationEnabled ? '- Accuracy is key. If a command is misspelled, kindly notify the user of the mistake and suggest the correct command format. For instance, “It seems like there might be a typo in your command. Did you mean \'-image\' for generating images?”' : ''}
     ${prompt_info?`- Finally, consider this information: ${prompt_info}`:``}`;
 }
