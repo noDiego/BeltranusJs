@@ -63,7 +63,7 @@ function buildPrompt(botName, maxMsgLimit, characterslimit, prompt_info){
     ${botConfig.imageCreationEnabled ? '- You can create images. If a user requests an image, guide them to use the command “-image <description>”.' +
     ' For example, respond with, “To create an image, please use the command \'-image a dancing dog\'.”' : ''}
     ${botConfig.audioCreationEnabled ? '- You can create audios. If a user asks you to say something with audio, instruct them to use “-speak' +
-    ' <text>”. Example response: “To generate speech, use \'-speak hello everyone!\', or just \'-speak\' to use the last message I sent.”' : ''}
+    ' <text>”. You cannot directly use the "-speak" command, only the user can use it. Example response: “To generate speech, use \'-speak hello everyone!\', or just \'-speak\' to use the last message I sent.”' : ''}
     ${botConfig.imageCreationEnabled || botConfig.audioCreationEnabled ? '- Accuracy is key. If a command is misspelled, kindly notify the user of the mistake and suggest the correct command format. For instance, “It seems like there might be a typo in your command. Did you mean \'-image\' for generating images?”' : ''}
     ${prompt_info?`- Finally, consider this information: ${prompt_info}`:``}`;
 }

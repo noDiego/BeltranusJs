@@ -239,8 +239,8 @@ export class Beltranus {
       const media = isImage? await msg.downloadMedia() : null;
 
       const role = msg.fromMe ? GPTRol.ASSISTANT : GPTRol.USER;
-      const name = msg.fromMe ? GPTRol.ASSISTANT : (await getContactName(msg));
-      const chatName = CONFIG.botConfig.sendChatName? `${name}: `:``;
+      const name = msg.fromMe ? capitalizeString(chatCfg.prompt_name) : (await getContactName(msg));
+      const chatName = CONFIG.botConfig.sendChatName && !msg.fromMe? `${name}: `:``;
 
 
       // Assemble the content as a mix of text and any included media
