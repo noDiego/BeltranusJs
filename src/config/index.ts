@@ -49,7 +49,8 @@ const botConfig = {
   maxImages: 3, // The maximum number of images the bot will process from the last received messages
   prompt: '', // The initial prompt for the bot, providing instructions on how the bot should behave; it's dynamically generated based on other config values
   imageCreationEnabled: false, // Enable or disable the bot's capability to generate images based on text descriptions
-  audioCreationEnabled: true // Enable or disable the bot's capability to generate speech audio from text
+  audioCreationEnabled: true, // Enable or disable the bot's capability to generate speech audio from text
+  sendChatName: true
 };
 
 function buildPrompt(botName, maxMsgLimit, characterslimit, prompt_info){

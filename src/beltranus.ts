@@ -26,13 +26,15 @@ import ChatCompletionContentPart = OpenAI.ChatCompletionContentPart;
 
 export class Beltranus {
 
+  private client
   private chatGpt: ChatGTP;
   private fakeyouService: FakeyouService;
   private db: PostgresClient;
   private chatConfigs: ChatCfg[];
-  private allowedTypes = [MessageTypes.STICKER, MessageTypes.TEXT, MessageTypes.IMAGE, MessageTypes.AUDIO, MessageTypes.VOICE];
+  private allowedTypes = [MessageTypes.STICKER, MessageTypes.TEXT, MessageTypes.IMAGE];
 
-  public constructor() {
+  public constructor(client) {
+    this.client = client;
     this.chatGpt = new ChatGTP();
     this.fakeyouService = new FakeyouService();
     this.db = PostgresClient.getInstance();
@@ -116,11 +118,17 @@ export class Beltranus {
       chatData.clearState();
 
       if(!chatResponseString) return;
-      return message.reply(chatResponseString);
+
+      return this.returnResponse(message, chatResponseString, chatData.isGroup);
     } catch (e: any) {
       logger.error(e.message);
-      return message.reply('Error 😔');
+      return message.reply('Tuve un Error con tu mensaje 😔. Intenta usar "-reset" para reiniciar la conversación.');
     }
+  }
+
+  private returnResponse(message, responseMsg, isGroup){
+    if(isGroup) return message.reply(responseMsg);
+    else return this.client.sendMessage(message.from, responseMsg);
   }
 
   /**
@@ -225,13 +233,15 @@ export class Beltranus {
 
       if (timeDifferenceHours > chatCfg.hourslimit) continue;
 
-      if (!this.allowedTypes.includes(msg.type)) continue;
+      if (!this.allowedTypes.includes(msg.type) && !isAudio) continue;
 
       // Check if the message includes media
       const media = isImage? await msg.downloadMedia() : null;
 
       const role = msg.fromMe ? GPTRol.ASSISTANT : GPTRol.USER;
       const name = msg.fromMe ? GPTRol.ASSISTANT : (await getContactName(msg));
+      const chatName = CONFIG.botConfig.sendChatName? `${name}: `:``;
+
 
       // Assemble the content as a mix of text and any included media
       const content: string | Array<ChatCompletionContentPart> = [];
@@ -243,9 +253,9 @@ export class Beltranus {
         });
       }
 
-      if (isAudio) content.push({ type: 'text', text: '<Audio Message>' });
+      if (isAudio) content.push({ type: 'text', text: chatName+'<Audio Message>' });
 
-      if (msg.body) content.push({ type: 'text', text: msg.body });
+      if (msg.body) content.push({ type: 'text', text: chatName+msg.body });
 
       messageList.push({ role: role, name: name, content: content });
     }
@@ -292,8 +302,7 @@ export class Beltranus {
       await message.reply(audioMedia);
     } catch (e: any) {
       logger.error(`Error in speak function: ${e.message}`);
-      // In case of an error during speech synthesis or sending the audio, inform the user.
-      return message.reply("I encountered a problem while trying to generate speech, please try again.");
+      throw e;
     }
   }
 
@@ -323,7 +332,7 @@ export class Beltranus {
     } catch (e: any) {
       logger.error(`Error in createImage function: ${e.message}`);
       // In case of an error during image generation or sending the image, inform the user.
-      return message.reply("I encountered a problem while trying to generate an image, please try again.");
+      throw e;
     }
   }
 

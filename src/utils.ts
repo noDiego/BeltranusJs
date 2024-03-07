@@ -42,13 +42,6 @@ export function removeNonAlphanumeric(str: string): string {
   return normalized.replace(regex, '');
 }
 
-export function filtraJailbreak(msg){
-  const splitted = msg.split('[🔓JAILBREAK] ');
-  if(splitted.length >1)
-    return splitted[1];
-  return msg;
-}
-
 export function parseCommand(input: string): { command?: string, commandMessage?: string } {
   const match = input.match(/^-(\S+)\s*(.*)/);
   if (!match) {

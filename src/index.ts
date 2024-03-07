@@ -4,7 +4,7 @@ import {Beltranus} from './beltranus';
 const qrcode = require('qrcode-terminal');
 const { Client } = require('whatsapp-web.js');
 const client = new Client();
-const beltranus: Beltranus = new Beltranus();
+const beltranus: Beltranus = new Beltranus(client);
 require('dotenv').config();
 
 client.on('qr', qr => {
