@@ -5,6 +5,7 @@ import ffmpeg from 'fluent-ffmpeg';
 import { PassThrough } from 'stream';
 import axios from 'axios';
 import getStream from 'get-stream';
+import { Tiktoken } from 'tiktoken/lite';
 
 export function getMsgData(message: Message): {command: string, content: string}{
   const command = message.body.split(' ')[0];
@@ -114,4 +115,26 @@ export function capitalizeString(str) {
 
   // Convierte la primera letra a mayúscula y concatena con el resto del string.
   return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+
+export async function contarTokens(texto: string) {
+  const cl100k_base = require("tiktoken/encoders/cl100k_base.json");
+  // Crear una nueva instancia de Tiktoken con la configuración del modelo
+  const encoding = new Tiktoken(
+    cl100k_base.bpe_ranks,
+    cl100k_base.special_tokens,
+    cl100k_base.pat_str
+  );
+
+  // Codificar el texto de entrada para obtener los tokens
+  const tokens = encoding.encode(texto);
+
+  // La longitud del arreglo de tokens representa la cantidad de tokens
+  const cantidadTokens = tokens.length;
+
+  // Libera memoria
+  encoding.free();
+
+  return cantidadTokens;
 }

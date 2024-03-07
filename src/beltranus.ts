@@ -1,7 +1,7 @@
 import { ChatGTP } from './services/chatgpt';
 import { Chat, Message, MessageMedia, MessageSendOptions, MessageTypes } from 'whatsapp-web.js';
 import {
-  capitalizeString,
+  capitalizeString, contarTokens,
   convertStreamToMessageMedia,
   convertWavToMp3,
   getCloudFile,
@@ -206,16 +206,17 @@ export class Beltranus {
   private async chatGPTReply(chatData: Chat, chatCfg: ChatCfg) {
 
     const actualDate = new Date();
+    let totalTokens = 0; // Contador de tokens acumulados
 
     // Initialize an array of messages
-    const messageList: any[] = [];
+    let messageList: any[] = [];
 
     // The first element will be the system message
     const promptText = chatCfg.buildprompt? CONFIG.buildPrompt(capitalizeString(chatCfg.prompt_name), chatCfg.limit, chatCfg.characterslimit, chatCfg.prompt_text) : chatCfg.prompt_text;
     messageList.push({ role: GPTRol.SYSTEM, content: promptText });
 
     // Retrieve the last 'limit' number of messages to send them in order
-    const fetchedMessages = await chatData.fetchMessages({ limit: chatCfg.limit });
+    const fetchedMessages = await chatData.fetchMessages({ limit: 300 });
     // Check for "-reset" command in chat history to potentially restart context
     const resetCommands = ["-reset", "-r", "!n"];
     const resetIndex = fetchedMessages.map(msg => msg.body).reduce((lastIndex, currentBody, currentIndex) => {
@@ -223,7 +224,7 @@ export class Beltranus {
     }, -1);
     const messagesToProcess = resetIndex >= 0 ? fetchedMessages.slice(resetIndex + 1) : fetchedMessages;
 
-    for (const msg of messagesToProcess) {
+    for (const msg of messagesToProcess.reverse()) {
 
       // Validate if the message was written less than 24 (or maxHoursLimit) hours ago; if older, it's not considered
       const msgDate = new Date(msg.timestamp * 1000);
@@ -234,6 +235,11 @@ export class Beltranus {
       if (timeDifferenceHours > chatCfg.hourslimit) continue;
 
       if (!this.allowedTypes.includes(msg.type) && !isAudio) continue;
+
+      // Estimar el conteo de tokens para el mensaje actual
+      let currentMessageTokens = await contarTokens(msg.body); // Usa la función auxiliar contarTokens para estimar la cantidad de tokens.
+      if ((totalTokens + currentMessageTokens) > chatCfg.maxtokens) break; // Si agregar este mensaje supera el límite de tokens, detener el bucle.
+      totalTokens += currentMessageTokens; // Acumular tokens.
 
       // Check if the message includes media
       const media = isImage? await msg.downloadMedia() : null;
@@ -260,6 +266,11 @@ export class Beltranus {
       messageList.push({ role: role, name: name, content: content });
     }
 
+    // If no new messages are present, return without action
+    if (messageList.length == 1) return;
+
+    messageList = messageList.reverse();
+
     // Limit the number of processed images to only the last few, as defined in bot configuration (maxSentImages)
     let imageCount = 0;
     for (let i = messageList.length - 1; i >= 0; i--) {
@@ -268,9 +279,6 @@ export class Beltranus {
         if (imageCount > CONFIG.botConfig.maxImages) messageList.splice(i, 1);
       }
     }
-
-    // If no new messages are present, return without action
-    if (messageList.length == 1) return;
 
     // Send the message and return the text response
     return await this.chatGpt.sendMessages(messageList);

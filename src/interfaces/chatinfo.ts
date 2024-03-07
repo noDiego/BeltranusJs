@@ -9,7 +9,7 @@ export interface ChatCfg {
   hourslimit: number;
   characterslimit: number;
   buildprompt: boolean;
-
+  maxtokens: number;
 }
 
 export enum GPTRol{
