@@ -212,7 +212,6 @@ export class Beltranus {
 
     // The first element will be the system message
     const promptText = chatCfg.buildprompt? CONFIG.buildPrompt(capitalizeString(chatCfg.prompt_name), chatCfg.limit, chatCfg.characterslimit, chatCfg.prompt_text) : chatCfg.prompt_text;
-    messageList.push({ role: GPTRol.SYSTEM, content: promptText });
     let totalTokens = await contarTokens(promptText); // Inicializa total de tokens con Prompt para no superar el maximo
 
     // Retrieve the last 'limit' number of messages to send them in order
@@ -265,6 +264,9 @@ export class Beltranus {
 
       messageList.push({ role: role, name: name, content: content });
     }
+
+    // Se inserta mensaje Prompt para sistema.
+    messageList.push({ role: GPTRol.SYSTEM, content: promptText });
 
     // If no new messages are present, return without action
     if (messageList.length == 1) return;
