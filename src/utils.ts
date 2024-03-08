@@ -138,3 +138,9 @@ export async function contarTokens(texto: string) {
 
   return cantidadTokens;
 }
+
+export function getLastElementsArray(array, qty) {
+  if (array.length <= qty) return array;
+  const inicio = array.length - qty;
+  return array.slice(inicio);
+}

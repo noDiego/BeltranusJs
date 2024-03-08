@@ -3,6 +3,7 @@ import OpenAI from 'openai';
 import { ChatCompletionMessageParam } from 'openai/src/resources/chat/completions';
 import { GPTRol } from '../interfaces/chatinfo';
 import { CONFIG } from '../config';
+import { getLastElementsArray } from '../utils';
 
 export class ChatGTP {
 
@@ -20,8 +21,8 @@ export class ChatGTP {
 
     logger.info(`[ChatGTP->sendMessages] Enviando ${messageList.length} mensajes`);
 
-    logger.debug('[ChatGTP->sendMessages] Message List:');
-    logger.debug(messageList);
+    logger.debug('[ChatGTP->sendMessages] Message List (Last 3 Elements):');
+    logger.debug(getLastElementsArray(messageList, 3));
 
     const completion = await this.openai.chat.completions.create({
       model: this.gptModel,
@@ -34,6 +35,7 @@ export class ChatGTP {
 
     logger.debug('[ChatGTP->sendMessages] Completion Response:');
     logger.debug(completion.choices[0]);
+    logger.debug('Totals Tokens used:'+ completion.usage?.total_tokens);
 
     const messageResult = completion.choices[0].message;
 

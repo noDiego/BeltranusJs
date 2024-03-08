@@ -281,6 +281,7 @@ export class Beltranus {
     }
 
     // Send the message and return the text response
+    logger.debug(`[chatGPTReply] Sending Messages. Tokens Total: ${totalTokens}`);
     return await this.chatGpt.sendMessages(messageList);
   }
 
