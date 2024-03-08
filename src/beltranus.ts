@@ -206,7 +206,6 @@ export class Beltranus {
   private async chatGPTReply(chatData: Chat, chatCfg: ChatCfg) {
 
     const actualDate = new Date();
-    let totalTokens = 0; // Contador de tokens acumulados
 
     // Initialize an array of messages
     let messageList: any[] = [];
@@ -214,6 +213,7 @@ export class Beltranus {
     // The first element will be the system message
     const promptText = chatCfg.buildprompt? CONFIG.buildPrompt(capitalizeString(chatCfg.prompt_name), chatCfg.limit, chatCfg.characterslimit, chatCfg.prompt_text) : chatCfg.prompt_text;
     messageList.push({ role: GPTRol.SYSTEM, content: promptText });
+    let totalTokens = await contarTokens(promptText); // Inicializa total de tokens con Prompt para no superar el maximo
 
     // Retrieve the last 'limit' number of messages to send them in order
     const fetchedMessages = await chatData.fetchMessages({ limit: 300 });
