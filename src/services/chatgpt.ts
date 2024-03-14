@@ -17,12 +17,14 @@ export class ChatGTP {
     this.gptModel = <string>process.env.GPT_MODEL;
   }
 
-  async sendMessages(messageList: ChatCompletionMessageParam[]) {
+  async sendMessages(messageList: ChatCompletionMessageParam[], systemPrompt: string) {
 
     logger.info(`[ChatGTP->sendMessages] Enviando ${messageList.length} mensajes`);
 
     logger.debug('[ChatGTP->sendMessages] Message List (Last 3 Elements):');
     logger.debug(getLastElementsArray(messageList, 3));
+
+    messageList.unshift({role: 'system', content:systemPrompt});
 
     const completion = await this.openai.chat.completions.create({
       model: this.gptModel,

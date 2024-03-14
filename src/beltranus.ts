@@ -1,7 +1,8 @@
 import { ChatGTP } from './services/chatgpt';
 import { Chat, Message, MessageMedia, MessageSendOptions, MessageTypes } from 'whatsapp-web.js';
 import {
-  capitalizeString, contarTokens,
+  capitalizeString,
+  contarTokens,
   convertStreamToMessageMedia,
   convertWavToMp3,
   getCloudFile,
@@ -11,7 +12,6 @@ import {
   logMessage,
   parseCommand
 } from './utils';
-import { GPTRol } from './interfaces/gpt-rol';
 import logger from './logger';
 import OpenAI from 'openai';
 import FakeyouService from './services/fakeyou';
@@ -22,20 +22,34 @@ import { CModel, CVoices, elevenTTS } from './services/eleven';
 import * as fs from 'fs';
 import path from 'path';
 import { FakeyouModel } from './interfaces/fakeyou.interfaces';
+import { AiContent, AiLanguage, AiMessage, AiRole } from './interfaces/ai-message';
+import { Claude } from './services/claude';
+import { ChatCompletionMessageParam } from 'openai/resources';
+import Anthropic from '@anthropic-ai/sdk';
 import ChatCompletionContentPart = OpenAI.ChatCompletionContentPart;
+import MessageParam = Anthropic.MessageParam;
+import ImageBlockParam = Anthropic.ImageBlockParam;
+import TextBlock = Anthropic.TextBlock;
+import { ClaudeModel } from './interfaces/claude-model';
 
 export class Beltranus {
 
   private client
   private chatGpt: ChatGTP;
+  private claude: Claude;
   private fakeyouService: FakeyouService;
   private db: PostgresClient;
   private chatConfigs: ChatCfg[];
   private allowedTypes = [MessageTypes.STICKER, MessageTypes.TEXT, MessageTypes.IMAGE];
+  private aiConfig = {
+    aiLanguage: AiLanguage.ANTHROPIC,
+    model: ClaudeModel.SONNET
+  };
 
   public constructor(client) {
     this.client = client;
     this.chatGpt = new ChatGTP();
+    this.claude = new Claude();
     this.fakeyouService = new FakeyouService();
     this.db = PostgresClient.getInstance();
     this.loadChatConfigs().then(()=>{logger.info('ChatConfigs Loaded')});
@@ -114,7 +128,7 @@ export class Beltranus {
 
       // Sends message to ChatGPT
       chatData.sendStateTyping();
-      const chatResponseString = await this.chatGPTReply(chatData, chatCfg);
+      const chatResponseString = await this.processMessage(chatData, chatCfg);
       chatData.clearState();
 
       if(!chatResponseString) return;
@@ -173,42 +187,55 @@ export class Beltranus {
         return await this.fakeyou(message, chatData);
       case "sp":
         return await this.eleven(message, CModel.SPANISH);
+      case "changeModel":
+        return this.changeModel(message, <string>commandMessage);
       default:
         return true;
     }
   }
 
+  private changeModel(message: Message, commandMessage: string){
+    if(!commandMessage){
+      const list = `*AILanguages*:\n-${AiLanguage.OPENAI}\n-${AiLanguage.ANTHROPIC}\n\n*ClaudeModels*:\n-${ClaudeModel.OPUS}\n-${ClaudeModel.SONNET}\n\n*Example*:\n-changeModel ANTHROPIC claude-3-sonnet-20240229`
+      return this.client.sendMessage(message.from, list)
+    }
+    try {
+      const input = commandMessage.split(" ");
+      if (input[0]) this.aiConfig.aiLanguage = input[0].toUpperCase() as AiLanguage;
+      if (input[1]) this.aiConfig.model = input[1].toLowerCase() as ClaudeModel;
+      return this.client.sendMessage(message.from, `New Config ${JSON.stringify(this.aiConfig)}`)
+    }catch (e: any){
+      logger.error(e);
+      return message.reply(e);
+    }
+  }
+
   /**
-   * Generates a response to a chat message using the ChatGPT model.
+   * Processes an incoming message and generates an appropriate response using the configured AI language model.
    *
-   * This function processes the last set of messages from a chat to form a context,
-   * which is then sent to ChatGPT to generate an appropriate response. It includes
-   * system-generated prompts that describe the assistant's capabilities and limitations
-   * (e.g., memory and character limits) to help guide the chat model's responses.
+   * This function is responsible for constructing the context for the AI model based on recent chat messages,
+   * subject to certain limits and filters. It then sends the context to the selected AI language model
+   * (either OpenAI or Anthropic) to generate a response.
    *
-   * Messages are first filtered to include only recent ones, based on the maximum hours
-   * limit defined in the bot configuration. It also limits the number of images processed
-   * to the last few images sent, as defined by the bot configuration.
+   * The function handles various aspects of the conversation, such as:
    *
-   * The message history and prompt are then sent to the ChatGPT model, which generates
-   * a text response. This response is intended to be sent back to the user as a reply
-   * to their message.
+   * - Filtering out messages older than a specified time limit.
+   * - Limiting the number of messages and tokens sent to the AI model.
+   * - Handling image and audio messages, and including them in the context if applicable.
+   * - Resetting the conversation context if the "-reset" command is encountered.
    *
-   * Parameters:
-   * - chatData: The Chat object associated with the message, providing context such as
-   *   the message history and chat characteristics.
+   * The generated response is then returned as a string.
    *
-   * Returns:
-   * - A promise that resolves to the textual response generated by the ChatGPT model. If there
-   *   are no new messages to process, or an error occurs during message processing or API
-   *   communication, it may return a string indicating lack of response or the need to try again.
+   * @param chatData - The Chat object representing the conversation context.
+   * @param chatCfg - The ChatCfg object containing configuration settings for the bot's behavior.
+   * @returns A promise that resolves with the generated response string, or null if no response is needed.
    */
-  private async chatGPTReply(chatData: Chat, chatCfg: ChatCfg) {
+  private async processMessage(chatData: Chat, chatCfg: ChatCfg) {
 
     const actualDate = new Date();
 
     // Initialize an array of messages
-    let messageList: any[] = [];
+    let messageList: AiMessage[] = [];
 
     // The first element will be the system message
     const promptText = chatCfg.buildprompt? CONFIG.buildPrompt(capitalizeString(chatCfg.prompt_name), chatCfg.limit, chatCfg.characterslimit, chatCfg.prompt_text) : chatCfg.prompt_text;
@@ -243,40 +270,26 @@ export class Beltranus {
       // Check if the message includes media
       const media = isImage? await msg.downloadMedia() : null;
 
-      const role = msg.fromMe ? GPTRol.ASSISTANT : GPTRol.USER;
+      const role = msg.fromMe ? AiRole.ASSISTANT : AiRole.USER;
       const name = msg.fromMe ? capitalizeString(chatCfg.prompt_name) : (await getContactName(msg));
-      const chatName = CONFIG.botConfig.sendChatName && !msg.fromMe? `${name}: `:``;
 
-
-      // Assemble the content as a mix of text and any included media
-      const content: string | Array<ChatCompletionContentPart> = [];
-      if (isImage && media) {
-        content.push({
-          type: 'image_url', "image_url": {
-            "url": `data:image/jpeg;base64,${media.data}`
-          }
-        });
-      }
-
-      if (isAudio) content.push({ type: 'text', text: chatName+'<Audio Message>' });
-
-      if (msg.body) content.push({ type: 'text', text: chatName+msg.body });
+      const content: Array<AiContent> = [];
+      if (isImage && media) content.push({ type: 'image', value: media.data });
+      if (isAudio)          content.push({ type: 'text', value: `<Audio Message>` });
+      if (msg.body)         content.push({ type: 'text', value: (chatData.isGroup && !msg.fromMe? `${name}: ` : '') + msg.body });
 
       messageList.push({ role: role, name: name, content: content });
     }
 
-    // Se inserta mensaje Prompt para sistema.
-    messageList.push({ role: GPTRol.SYSTEM, content: promptText });
-
     // If no new messages are present, return without action
-    if (messageList.length == 1) return;
-
+    if (messageList.length == 0) return;
     messageList = messageList.reverse();
 
     // Limit the number of processed images to only the last few, as defined in bot configuration (maxSentImages)
     let imageCount = 0;
     for (let i = messageList.length - 1; i >= 0; i--) {
-      if (messageList[i].content.type === 'image_url') {
+      const haveImg = messageList[i].content.find(c => c.type == 'image');
+      if (haveImg) {
         imageCount++;
         if (imageCount > CONFIG.botConfig.maxImages) messageList.splice(i, 1);
       }
@@ -284,7 +297,14 @@ export class Beltranus {
 
     // Send the message and return the text response
     logger.debug(`[chatGPTReply] Sending Messages. Tokens Total: ${totalTokens}`);
-    return await this.chatGpt.sendMessages(messageList);
+    // Send the message and return the text response
+    if (this.aiConfig.aiLanguage == AiLanguage.OPENAI) {
+      const convertedMessageList: ChatCompletionMessageParam[] = this.convertIaMessagesLang(messageList, AiLanguage.OPENAI) as ChatCompletionMessageParam[];
+      return await this.chatGpt.sendMessages(convertedMessageList, promptText);
+    } else if (this.aiConfig.aiLanguage == AiLanguage.ANTHROPIC) {
+      const convertedMessageList: MessageParam[] = this.convertIaMessagesLang(messageList, AiLanguage.ANTHROPIC) as MessageParam[];
+      return await this.claude.sendChat(convertedMessageList, promptText, this.aiConfig.model);
+    }
   }
 
   /**
@@ -481,6 +501,67 @@ export class Beltranus {
       if(msg.fromMe && msg.body.length>1) lastMessageBot = msg.body;
     }
     return lastMessageBot;
+  }
+
+  /**
+   * Converts AI message structures between different language models (OPENAI and ANTHROPIC).
+   * This function takes a list of AI messages, which may include text and image content,
+   * and converts this list into a format compatible with the specified AI language model.
+   * It supports conversion to both OpenAI and Anthropic message formats.
+   *
+   * Parameters:
+   * - messageList: An array of AiMessage, representing the messages to be converted.
+   * - lang: An AiLanguage enum value indicating the target language model (OPENAI or ANTHROPIC).
+   *
+   * Returns:
+   * - An array of MessageParam (for Anthropic) or ChatCompletionMessageParam (for OpenAI),
+   *   formatted according to the specified language model. The type of array returned depends
+   *   on the target language model indicated by the lang parameter.
+   */
+  private convertIaMessagesLang(messageList: AiMessage[], lang: AiLanguage ): MessageParam[] | ChatCompletionMessageParam[]{
+    switch (lang){
+      case AiLanguage.ANTHROPIC:
+
+        const claudeMessageList: MessageParam[] = [];
+        let currentRole: AiRole = AiRole.USER;
+        let gptContent: Array<TextBlock | ImageBlockParam> = [];
+        messageList.forEach((msg, index) => {
+          const role = msg.role === AiRole.ASSISTANT && msg.content.find(c => c.type === 'image') ? AiRole.USER : msg.role;
+          if (role !== currentRole) { // Change role or if it's the last message
+            if (gptContent.length > 0) {
+              claudeMessageList.push({ role: currentRole, content: gptContent });
+              gptContent = []; // Reset for the next block of messages
+            }
+            currentRole = role; // Ensure role alternation
+          }
+
+          // Add content to the current block
+          msg.content.forEach(c => {
+            if (c.type === 'text') gptContent.push({ type: 'text', text:<string> c.value });
+            else if (c.type === 'image') gptContent.push({ type: 'image', source: { data: <string>c.value, media_type: 'image/jpeg', type: 'base64' } });
+          });
+        });
+        // Ensure the last block is not left out
+        if (gptContent.length > 0) claudeMessageList.push({ role: currentRole, content: gptContent });
+
+        return claudeMessageList;
+
+      case AiLanguage.OPENAI:
+
+        const chatgptMessageList: any[] = [];
+        messageList.forEach(msg => {
+          const gptContent: Array<ChatCompletionContentPart> = [];
+          msg.content.forEach(c => {
+            if(c.type == 'image') gptContent.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${c.value}`} });
+            if(c.type == 'text') gptContent.push({ type: 'text', text: <string> c.value });
+          })
+          chatgptMessageList.push({content: gptContent, name: msg.name, role: msg.role});
+        })
+        return chatgptMessageList;
+
+      default:
+        return [];
+    }
   }
 
 }

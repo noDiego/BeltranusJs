@@ -12,6 +12,13 @@ const openAI = {
   speechVoice: process.env.SPEECH_VOICE || 'nova' // Specifies the voice model to be used in speech synthesis
 };
 
+// Configuration for Anthropic specific parameters
+const anthropic = {
+  apiKey: process.env.CLAUDE_API_KEY, // Your CLAUDE_API_KEY key for authentication against the Anthropic services
+  chatModel: 'claude-3-sonnet-20240229',// The model used by Anthropic for chat completions
+  maxCharacters: 2000
+};
+
 const database = {
   user: process.env.PSQL_USER,
   pass: process.env.PSQL_PASS,
@@ -46,6 +53,7 @@ const fakeyou = {
 
 // General bot configuration parameters
 const botConfig = {
+  aiLanguage: process.env.AI_LANGUAGE || "ANTHROPIC", // "ANTHROPIC" or "OPENAI". This setting is used only for chat completions. Image and audio generation are exclusively done using OpenAI.
   maxImages: 3, // The maximum number of images the bot will process from the last received messages
   prompt: '', // The initial prompt for the bot, providing instructions on how the bot should behave; it's dynamically generated based on other config values
   imageCreationEnabled: false, // Enable or disable the bot's capability to generate images based on text descriptions
@@ -61,10 +69,8 @@ function buildPrompt(botName, maxMsgLimit, characterslimit, prompt_info){
     - You have a short-term memory able to recall only the last ${maxMsgLimit} messages and forget anything older than 24 hours. 
     - When images are sent to you, remember that you can only consider the latest ${botConfig.maxImages} images for your tasks.
     - If users need to reset any ongoing task or context, they should use the "-reset" command. This will cause you to not remember anything that was said previously to the command.
-    ${botConfig.imageCreationEnabled ? '- You can create images. If a user requests an image, guide them to use the command “-image <description>”.' +
-    ' For example, respond with, “To create an image, please use the command \'-image a dancing dog\'.”' : ''}
-    ${botConfig.audioCreationEnabled ? '- You can create audios. If a user asks you to say something with audio, instruct them to use “-speak' +
-    ' <text>”. You cannot directly use the "-speak" command, only the user can use it. Example response: “To generate speech, use \'-speak hello everyone!\', or just \'-speak\' to use the last message I sent.”' : ''}
+    ${botConfig.imageCreationEnabled?'- You can create images. If a user requests an image, guide them to use the command “-image <description>”. For example, respond with, “To create an image, please use the command \'-image a dancing dog\'.”':''}
+    ${botConfig.audioCreationEnabled?'- You can create audios. If a user asks you to say something with audio, instruct them to use “-speak <text>” to create an audio of a text, or they can just use "-speak" to create an audio of the bot\'s last response. Example response: “To generate speech, use \'-speak hello everyone!\', or just \'-speak\' to use the last message I sent.”':''}
     ${botConfig.imageCreationEnabled || botConfig.audioCreationEnabled ? '- Accuracy is key. If a command is misspelled, kindly notify the user of the mistake and suggest the correct command format. For instance, “It seems like there might be a typo in your command. Did you mean \'-image\' for generating images?”' : ''}
     ${prompt_info?`- Finally, consider this information: ${prompt_info}`:``}`;
 }
@@ -76,5 +82,6 @@ export const CONFIG = {
   openAI,
   database,
   fakeyou,
+  anthropic,
   buildPrompt
 };
