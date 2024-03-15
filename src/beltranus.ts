@@ -274,7 +274,7 @@ export class Beltranus {
       const name = msg.fromMe ? capitalizeString(chatCfg.prompt_name) : (await getContactName(msg));
 
       const content: Array<AiContent> = [];
-      if (isImage && media) content.push({ type: 'image', value: media.data });
+      if (isImage && media) content.push({ type: 'image', value: media.data, media_type: media.mimetype });
       if (isAudio)          content.push({ type: 'text', value: `<Audio Message>` });
       if (msg.body)         content.push({ type: 'text', value: (chatData.isGroup && !msg.fromMe? `${name}: ` : '') + msg.body });
 
@@ -538,7 +538,7 @@ export class Beltranus {
           // Add content to the current block
           msg.content.forEach(c => {
             if (c.type === 'text') gptContent.push({ type: 'text', text:<string> c.value });
-            else if (c.type === 'image') gptContent.push({ type: 'image', source: { data: <string>c.value, media_type: 'image/jpeg', type: 'base64' } });
+            else if (c.type === 'image') gptContent.push({ type: 'image', source: { data: <string>c.value, media_type: c.media_type as any, type: 'base64' } });
           });
         });
         // Ensure the last block is not left out
@@ -552,7 +552,7 @@ export class Beltranus {
         messageList.forEach(msg => {
           const gptContent: Array<ChatCompletionContentPart> = [];
           msg.content.forEach(c => {
-            if(c.type == 'image') gptContent.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${c.value}`} });
+            if(c.type == 'image') gptContent.push({ type: 'image_url', image_url: { url: `data:${c.media_type};base64,${c.value}`} });
             if(c.type == 'text') gptContent.push({ type: 'text', text: <string> c.value });
           })
           chatgptMessageList.push({content: gptContent, name: msg.name, role: msg.role});
