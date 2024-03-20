@@ -45,6 +45,7 @@ export class Beltranus {
     aiLanguage: AiLanguage.ANTHROPIC,
     model: ClaudeModel.SONNET
   };
+  private imageTokens = 255; //Tokens Image 512x512
 
   public constructor(client) {
     this.client = client;
@@ -262,11 +263,6 @@ export class Beltranus {
 
       if (!this.allowedTypes.includes(msg.type) && !isAudio) continue;
 
-      // Estimar el conteo de tokens para el mensaje actual
-      let currentMessageTokens = await contarTokens(msg.body); // Usa la función auxiliar contarTokens para estimar la cantidad de tokens.
-      if ((totalTokens + currentMessageTokens) > chatCfg.maxtokens) break; // Si agregar este mensaje supera el límite de tokens, detener el bucle.
-      totalTokens += currentMessageTokens; // Acumular tokens.
-
       // Check if the message includes media
       const media = isImage? await msg.downloadMedia() : null;
 
@@ -277,6 +273,14 @@ export class Beltranus {
       if (isImage && media) content.push({ type: 'image', value: media.data, media_type: media.mimetype });
       if (isAudio)          content.push({ type: 'text', value: `<Audio Message>` });
       if (msg.body)         content.push({ type: 'text', value: (chatData.isGroup && !msg.fromMe? `${name}: ` : '') + msg.body });
+
+      // Estimar el conteo de tokens para el mensaje actual
+      let currentMessageTokens;
+      if(isImage && media) currentMessageTokens = this.imageTokens; // Usa la función auxiliar contarTokens para estimar la cantidad de tokens.
+      else currentMessageTokens = await contarTokens(content[0].value as string)
+
+      if ((totalTokens + currentMessageTokens) > chatCfg.maxtokens) break; // Si agregar este mensaje supera el límite de tokens, detener el bucle.
+      totalTokens += currentMessageTokens; // Acumular tokens.
 
       messageList.push({ role: role, name: name, content: content });
     }
@@ -543,6 +547,11 @@ export class Beltranus {
         });
         // Ensure the last block is not left out
         if (gptContent.length > 0) claudeMessageList.push({ role: currentRole, content: gptContent });
+
+        // Ensure the first message is always AiRole.USER (by API requirement)
+        if (claudeMessageList.length > 0 && claudeMessageList[0].role !== AiRole.USER) {
+          claudeMessageList.shift(); // Remove the first element if it's not USER
+        }
 
         return claudeMessageList;
 
