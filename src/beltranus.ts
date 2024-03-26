@@ -1,5 +1,5 @@
 import { ChatGTP } from './services/chatgpt';
-import { Chat, Message, MessageMedia, MessageSendOptions, MessageTypes } from 'whatsapp-web.js';
+import { Chat, Contact, Message, MessageMedia, MessageSendOptions, MessageTypes } from 'whatsapp-web.js';
 import {
   capitalizeString,
   contarTokens,
@@ -105,7 +105,7 @@ export class Beltranus {
 
       // Extract the data input (extracts command e.g., "-a", and the message)
       const chatData: Chat = await message.getChat();
-      const contactData = await message.getContact();
+      const contactData: Contact = await message.getContact();
       const { command, commandMessage } = parseCommand(message.body);
 
       //Numeros restringidos
@@ -121,7 +121,7 @@ export class Beltranus {
       if(chatCfg == null && !command) return false;
 
       // Logs the message
-      logMessage(message, chatData);
+      logMessage(message, chatData, contactData);
 
       // Evaluates if it should go to the command flow
       if(!!command){
@@ -190,6 +190,8 @@ export class Beltranus {
       case "fakeyou":
         if(message.body == '-fakeyou') return await this.fakeyouList(message);
         return await this.fakeyou(message, chatData);
+      case "reset":
+        return await message.react('👍');
       case "sp":
         return await this.eleven(message, CModel.SPANISH);
       case "changeModel":

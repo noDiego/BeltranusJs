@@ -1,4 +1,4 @@
-import {Chat, Message} from 'whatsapp-web.js';
+import { Chat, Contact, Message } from 'whatsapp-web.js';
 import logger from './logger';
 import moment from "moment-timezone";
 import ffmpeg from 'fluent-ffmpeg';
@@ -13,7 +13,7 @@ export function getMsgData(message: Message): {command: string, content: string}
   return { command, content };
 }
 
-export function logMessage(message: Message, chat: Chat){
+export function logMessage(message: Message, chat: Chat, contactInfo: Contact){
 
   const msgObj: any = {
     author: String(message.author),
@@ -23,7 +23,7 @@ export function logMessage(message: Message, chat: Chat){
     msg: message.body
   };
   logger.info(
-    `{ chatUser:${msgObj.chatUser}, isGroup:${chat.isGroup}, grId:${chat.id._serialized}, grName:${chat.name}, author:'${msgObj.author}(${msgObj.number})', date:'${msgObj.date.toLocaleDateString()}-${msgObj.date.toLocaleTimeString()}', msg:'${msgObj.msg}' }`
+    `{ chatUser:${msgObj.chatUser}, isGroup:${chat.isGroup}, grId:${chat.id._serialized}, grName:${chat.name}, author:'${contactInfo.name}(${contactInfo.number})', date:'${msgObj.date.toLocaleDateString()}-${msgObj.date.toLocaleTimeString()}', msg:'${msgObj.msg}' }`
   );
 }
 
