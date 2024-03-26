@@ -109,7 +109,10 @@ export class Beltranus {
       const { command, commandMessage } = parseCommand(message.body);
 
       //Numeros restringidos
-      if(CONFIG.botConfig.restrictedNumbers.includes(contactData.number)) return false;
+      if(CONFIG.botConfig.restrictedNumbers.includes(contactData.number)){
+        logger.info(`Numero ${contactData.number} en lista restringida. Se ignora mensaje`);
+        return false;
+      }
 
       // If it's a "Broadcast" message, it's not processed
       if(chatData.id.user == 'status' || chatData.id._serialized == 'status@broadcast') return false;
