@@ -105,7 +105,11 @@ export class Beltranus {
 
       // Extract the data input (extracts command e.g., "-a", and the message)
       const chatData: Chat = await message.getChat();
+      const contactData = await message.getContact();
       const { command, commandMessage } = parseCommand(message.body);
+
+      //Numeros restringidos
+      if(CONFIG.botConfig.restrictedNumbers.includes(contactData.number)) return false;
 
       // If it's a "Broadcast" message, it's not processed
       if(chatData.id.user == 'status' || chatData.id._serialized == 'status@broadcast') return false;

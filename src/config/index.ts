@@ -58,7 +58,8 @@ const botConfig = {
   prompt: '', // The initial prompt for the bot, providing instructions on how the bot should behave; it's dynamically generated based on other config values
   imageCreationEnabled: false, // Enable or disable the bot's capability to generate images based on text descriptions
   audioCreationEnabled: true, // Enable or disable the bot's capability to generate speech audio from text
-  sendChatName: true
+  sendChatName: true,
+  restrictedNumbers: (<string>process.env.RESTRICTED_NUMBERS).split(',')
 };
 
 function buildPrompt(botName, maxMsgLimit, characterslimit, prompt_info){
