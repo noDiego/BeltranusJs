@@ -62,7 +62,10 @@ export class Beltranus {
     this.chatConfigs = chatConfigs.sort((a, b) => (a.groups === '*' ? 1 : b.groups === '*' ? -1 : 0));
   }
 
-  private async getChatConfig(message: Message, chatData: Chat): Promise<ChatCfg | null>{
+  private async getChatConfig(message: Message, chatData: Chat, isPersonalChat: boolean): Promise<ChatCfg | null>{
+    //Si soy yo hablando directo retorna C3PO
+    if(isPersonalChat) return this.chatConfigs.find(p=> p.prompt_name.toLowerCase() == 'c3powsp') as ChatCfg;
+
     /** Se recorre configuraciones guardadas */
     for (const chatCfg of this.chatConfigs) {
       /**Revisa si el mensaje viene del grupo de la config */
@@ -107,6 +110,7 @@ export class Beltranus {
       const chatData: Chat = await message.getChat();
       const contactData: Contact = await message.getContact();
       const { command, commandMessage } = parseCommand(message.body);
+      const isPersonalChat = contactData.number == CONFIG.botConfig.personalNumber && !chatData.isGroup;
 
       //Numeros restringidos
       if(CONFIG.botConfig.restrictedNumbers.includes(contactData.number)){
@@ -120,7 +124,7 @@ export class Beltranus {
       if(!this.allowedTypes.includes(message.type) || message.type == MessageTypes.AUDIO ||message.type == MessageTypes.VOICE) return false;
 
       // Se evalua si corresponde a algun bot
-      let chatCfg: ChatCfg = await this.getChatConfig(message, chatData) as ChatCfg;
+      let chatCfg: ChatCfg = await this.getChatConfig(message, chatData, isPersonalChat) as ChatCfg;
       if(chatCfg == null && !command) return false;
 
       // Logs the message
@@ -136,7 +140,7 @@ export class Beltranus {
 
       // Sends message to ChatGPT
       chatData.sendStateTyping();
-      const chatResponseString = await this.processMessage(chatData, chatCfg);
+      const chatResponseString = await this.processMessage(chatData, chatCfg, isPersonalChat);
       chatData.clearState();
 
       if(!chatResponseString) return;
@@ -240,15 +244,15 @@ export class Beltranus {
    * @param chatCfg - The ChatCfg object containing configuration settings for the bot's behavior.
    * @returns A promise that resolves with the generated response string, or null if no response is needed.
    */
-  private async processMessage(chatData: Chat, chatCfg: ChatCfg) {
+  private async processMessage(chatData: Chat, chatCfg: ChatCfg, isPersonal: boolean) {
 
     const actualDate = new Date();
 
     // Initialize an array of messages
     let messageList: AiMessage[] = [];
 
-    // The first element will be the system message
-    const promptText = chatCfg.buildprompt? CONFIG.buildPrompt(capitalizeString(chatCfg.prompt_name), chatCfg.limit, chatCfg.characterslimit, chatCfg.prompt_text) : chatCfg.prompt_text;
+    const promptText = chatCfg.buildprompt?
+      CONFIG.buildPrompt(capitalizeString(chatCfg.prompt_name), chatCfg.limit, chatCfg.maximages, chatCfg.characterslimit, chatCfg.prompt_text) : chatCfg.prompt_text;
     let totalTokens = await contarTokens(promptText); // Inicializa total de tokens con Prompt para no superar el maximo
 
     // Retrieve the last 'limit' number of messages to send them in order
@@ -304,7 +308,7 @@ export class Beltranus {
       const haveImg = messageList[i].content.find(c => c.type == 'image');
       if (haveImg) {
         imageCount++;
-        if (imageCount > CONFIG.botConfig.maxImages) messageList.splice(i, 1);
+        if (imageCount > chatCfg.maximages) messageList.splice(i, 1);
       }
     }
 
@@ -316,7 +320,7 @@ export class Beltranus {
       return await this.chatGpt.sendMessages(convertedMessageList, promptText);
     } else if (this.aiConfig.aiLanguage == AiLanguage.ANTHROPIC) {
       const convertedMessageList: MessageParam[] = this.convertIaMessagesLang(messageList, AiLanguage.ANTHROPIC) as MessageParam[];
-      return await this.claude.sendChat(convertedMessageList, promptText, this.aiConfig.model);
+      return await this.claude.sendChat(convertedMessageList, promptText, isPersonal? ClaudeModel.OPUS: this.aiConfig.model);
     }
   }
 
