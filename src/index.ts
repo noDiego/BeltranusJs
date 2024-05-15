@@ -3,7 +3,13 @@ import {Beltranus} from './beltranus';
 
 const qrcode = require('qrcode-terminal');
 const { Client } = require('whatsapp-web.js');
-const client = new Client();
+const client = new Client({
+  webVersionCache:
+    {
+      remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2413.51-beta.html',
+      type: 'remote'
+    }
+});
 const beltranus: Beltranus = new Beltranus(client);
 require('dotenv').config();
 

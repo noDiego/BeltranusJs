@@ -42,7 +42,7 @@ export class Beltranus {
   private chatConfigs: ChatCfg[];
   private allowedTypes = [MessageTypes.STICKER, MessageTypes.TEXT, MessageTypes.IMAGE];
   private aiConfig = {
-    aiLanguage: AiLanguage.ANTHROPIC,
+    aiLanguage: AiLanguage.OPENAI,
     model: ClaudeModel.SONNET
   };
   private imageTokens = 255; //Tokens Image 512x512
