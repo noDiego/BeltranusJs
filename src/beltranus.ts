@@ -1,6 +1,7 @@
 import { ChatGTP } from './services/chatgpt';
 import { Chat, Contact, Message, MessageMedia, MessageSendOptions, MessageTypes } from 'whatsapp-web.js';
 import {
+  bufferToStream,
   capitalizeString,
   contarTokens,
   convertStreamToMessageMedia,
@@ -26,11 +27,12 @@ import { AiContent, AiLanguage, AiMessage, AiRole } from './interfaces/ai-messag
 import { Claude } from './services/claude';
 import { ChatCompletionMessageParam } from 'openai/resources';
 import Anthropic from '@anthropic-ai/sdk';
+import { ClaudeModel } from './interfaces/claude-model';
+import NodeCache from 'node-cache';
 import ChatCompletionContentPart = OpenAI.ChatCompletionContentPart;
 import MessageParam = Anthropic.MessageParam;
 import ImageBlockParam = Anthropic.ImageBlockParam;
 import TextBlock = Anthropic.TextBlock;
-import { ClaudeModel } from './interfaces/claude-model';
 
 export class Beltranus {
 
@@ -40,15 +42,17 @@ export class Beltranus {
   private fakeyouService: FakeyouService;
   private db: PostgresClient;
   private chatConfigs: ChatCfg[];
-  private allowedTypes = [MessageTypes.STICKER, MessageTypes.TEXT, MessageTypes.IMAGE];
+  private allowedTypes = [MessageTypes.STICKER, MessageTypes.TEXT, MessageTypes.IMAGE, MessageTypes.VOICE];
   private aiConfig = {
     aiLanguage: AiLanguage.OPENAI,
     model: ClaudeModel.SONNET
   };
   private imageTokens = 255; //Tokens Image 512x512
+  private cache: NodeCache;
 
   public constructor(client) {
     this.client = client;
+    this.cache = new NodeCache();
     this.chatGpt = new ChatGTP();
     this.claude = new Claude();
     this.fakeyouService = new FakeyouService();
@@ -63,8 +67,8 @@ export class Beltranus {
   }
 
   private async getChatConfig(message: Message, chatData: Chat, isPersonalChat: boolean): Promise<ChatCfg | null>{
-    //Si soy yo hablando directo retorna C3PO
-    if(isPersonalChat) return this.chatConfigs.find(p=> p.prompt_name.toLowerCase() == 'c3powsp') as ChatCfg;
+    //Si soy yo hablando directo retorna Tars
+    if(isPersonalChat) return this.chatConfigs.find(p=> p.prompt_name.toLowerCase() == 'tars') as ChatCfg;
 
     /** Se recorre configuraciones guardadas */
     for (const chatCfg of this.chatConfigs) {
@@ -121,7 +125,7 @@ export class Beltranus {
       // If it's a "Broadcast" message, it's not processed
       if(chatData.id.user == 'status' || chatData.id._serialized == 'status@broadcast') return false;
 
-      if(!this.allowedTypes.includes(message.type) || message.type == MessageTypes.AUDIO ||message.type == MessageTypes.VOICE) return false;
+      if(!this.allowedTypes.includes(message.type) || message.type == MessageTypes.AUDIO) return false;
 
       // Se evalua si corresponde a algun bot
       let chatCfg: ChatCfg = await this.getChatConfig(message, chatData, isPersonalChat) as ChatCfg;
@@ -145,7 +149,10 @@ export class Beltranus {
 
       if(!chatResponseString) return;
 
-      return this.returnResponse(message, chatResponseString, chatData.isGroup);
+      if(message.type == MessageTypes.VOICE)
+        return this.speak(message, chatData, chatResponseString, 'mp3');
+      else
+        return this.returnResponse(message, chatResponseString, chatData.isGroup);
     } catch (e: any) {
       logger.error(e.message);
       return message.reply('Tuve un Error con tu mensaje 😔. Intenta usar "-reset" para reiniciar la conversación.');
@@ -264,26 +271,35 @@ export class Beltranus {
     }, -1);
     const messagesToProcess = resetIndex >= 0 ? fetchedMessages.slice(resetIndex + 1) : fetchedMessages;
 
+    // Placeholder for promises for transcriptions
+    let transcriptionPromises: { index: number, promise: Promise<string> }[] = [];
+
     for (const msg of messagesToProcess.reverse()) {
 
       // Validate if the message was written less than 24 (or maxHoursLimit) hours ago; if older, it's not considered
       const msgDate = new Date(msg.timestamp * 1000);
       const timeDifferenceHours = (actualDate.getTime() - msgDate.getTime()) / (1000 * 60 * 60);
       const isImage = msg.type == MessageTypes.STICKER || msg.type === MessageTypes.IMAGE;
-      const isAudio = msg.type == MessageTypes.AUDIO || msg.type === MessageTypes.VOICE;
+      const isAudio = msg.type == MessageTypes.AUDIO;
+      const isVoice = msg.type === MessageTypes.VOICE;
 
       if (timeDifferenceHours > chatCfg.hourslimit) continue;
 
       if (!this.allowedTypes.includes(msg.type) && !isAudio) continue;
 
       // Check if the message includes media
-      const media = isImage? await msg.downloadMedia() : null;
+      const media = isImage || isVoice? await msg.downloadMedia() : null;
 
       const role = msg.fromMe ? AiRole.ASSISTANT : AiRole.USER;
       const name = msg.fromMe ? capitalizeString(chatCfg.prompt_name) : (await getContactName(msg));
 
       const content: Array<AiContent> = [];
       if (isImage && media) content.push({ type: 'image', value: media.data, media_type: media.mimetype });
+      if (isVoice && media) {
+        const transcriptionPromise = this.transcribeVoice(media, msg);
+        transcriptionPromises.push({ index: messageList.length, promise: transcriptionPromise });
+        content.push({ type: 'text', value: '<Transcribiendo mensaje de voz...>' });
+      }
       if (isAudio)          content.push({ type: 'text', value: `<Audio Message>` });
       if (msg.body)         content.push({ type: 'text', value: (chatData.isGroup && !msg.fromMe? `${name}: ` : '') + msg.body });
 
@@ -297,6 +313,30 @@ export class Beltranus {
 
       messageList.push({ role: role, name: name, content: content });
     }
+
+    // Wait for all transcriptions to complete
+    const transcriptions = await Promise.all(transcriptionPromises.map(t => t.promise));
+
+    console.log('----------');
+    console.log('Transcriptions:', transcriptions);
+    console.log('MessageList before transcription mapping:', JSON.stringify(messageList, null, 2));
+
+    transcriptionPromises.forEach((transcriptionPromise, idx) => {
+      const transcription = transcriptions[idx];
+      const messageIdx = transcriptionPromise.index;
+
+      console.log('Applying transcription to message:', { transcription, messageIdx, messageContent: messageList[messageIdx].content });
+
+      // Reemplaza el marcador <Transcribiendo mensaje de voz...> con la transcripción
+      messageList[messageIdx].content = messageList[messageIdx].content.map(c =>
+        c.type === 'text' && c.value === '<Transcribiendo mensaje de voz...>'
+          ? { type: 'text', value: transcription }
+          : c
+      );
+
+      console.log('MessageList after application:', JSON.stringify(messageList, null, 2));
+    });
+    console.log('MessageList after all transcriptions:', JSON.stringify(messageList, null, 2));
 
     // If no new messages are present, return without action
     if (messageList.length == 0) return;
@@ -337,17 +377,23 @@ export class Beltranus {
    * Returns:
    * - A promise that either resolves when the audio message has been successfully sent, or rejects if an error occurs during the process.
    */
-  private async speak(message: Message, chatData: Chat, content: string | undefined) {
+  private async speak(message: Message, chatData: Chat, content: string | undefined, responseFormat?) {
     // Set the content to be spoken. If no content is explicitly provided, fetch the last bot reply for use.
     let messageToSay = content || await this.getLastBotMessage(chatData);
-
     try {
       // Generate speech audio from the given text content using the OpenAI API.
-      const audio = await this.chatGpt.speech(messageToSay);
-      const audioMedia = new MessageMedia('audio/mp3', audio.toString('base64'), 'response' + '.mp3');
+      const audioBuffer = await this.chatGpt.speech(messageToSay, responseFormat);
+      const oggBase64 = audioBuffer.toString('base64');
+      // const oggBuffer = await convertToOgg(audioBuffer) as any;
+      // const oggBase64 = oggBuffer.toString('base64');
+
+      //let audioMedia = new MessageMedia('audio/ogg; codecs=opus', oggBase64, 'voice.ogg');
+      let audioMedia = new MessageMedia('audio/ogg; codecs=opus', oggBase64, 'voice.ogg');
 
       // Reply to the message with the synthesized speech audio.
-      await message.reply(audioMedia);
+      const repliedMsg = await message.reply(audioMedia, undefined, { sendAudioAsVoice: true });
+
+      this.cache.set(repliedMsg.id._serialized, messageToSay, CONFIG.botConfig.redisCacheTime);
     } catch (e: any) {
       logger.error(`Error in speak function: ${e.message}`);
       throw e;
@@ -586,4 +632,36 @@ export class Beltranus {
     }
   }
 
+  private async transcribeVoice(media: MessageMedia, message: Message): Promise<string> {
+    try {
+
+      //Comprueba si existe en cache
+      const cachedMessage = await this.cache.get<string>(message.id._serialized);
+      if(cachedMessage) return cachedMessage;
+
+      // Convertir la media base64 a un Buffer
+      const audioBuffer = Buffer.from(media.data, 'base64');
+      logger.debug(`Buffer de audio creado con tamaño: ${audioBuffer.length}`);
+      const audioStream = bufferToStream(audioBuffer);
+
+      logger.debug(`[ChatGTP->transcribeVoice] Iniciando transcripción de audio`);
+
+      const transcribedText = await this.chatGpt.transcription(audioStream);
+
+      // Log del texto transcrito
+      logger.debug(`[ChatGTP->transcribeVoice] Texto transcrito: ${transcribedText}`);
+
+      // Agregar el prefijo informativo
+      const finalMessage = `<TranscribedAudio>${transcribedText}`;
+
+      // Se guarda en cache
+      this.cache.set(message.id._serialized, finalMessage, CONFIG.botConfig.redisCacheTime);
+
+      return finalMessage;
+    } catch (error: any) {
+      // Manejo de errores
+      logger.error(`Error transcribing voice message: ${error.message}`);
+      return '<Error transcribiendo el mensaje de voz>';
+    }
+  }
 }

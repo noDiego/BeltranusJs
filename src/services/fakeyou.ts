@@ -9,16 +9,20 @@ class FakeyouService {
   private fakeyouModels: FakeyouModel[];
 
   constructor() {
-    this.fyClient = new FakeYou.Client({
-      usernameOrEmail: CONFIG.fakeyou.credentials.email,
-      password: CONFIG.fakeyou.credentials.password
-    });
-    this.fyClient.start().then(()=>{
-      logger.info('Fakeyou started OK');
-      this.loadModelList().then(()=>{
-        logger.info('Fakeyou Models loaded');
+    try {
+      this.fyClient = new FakeYou.Client({
+        usernameOrEmail: CONFIG.fakeyou.credentials.email,
+        password: CONFIG.fakeyou.credentials.password
       });
-    });
+      this.fyClient.start().then(() => {
+        logger.info('Fakeyou started OK');
+        this.loadModelList().then(() => {
+          logger.info('Fakeyou Models loaded');
+        });
+      });
+    }catch (e){
+      logger.error('Error inicializanod FakeYou');
+    }
   }
 
   async makeTTS(fyModel: FakeyouModel, text: string) {

@@ -2,10 +2,11 @@ import { Chat, Contact, Message } from 'whatsapp-web.js';
 import logger from './logger';
 import moment from "moment-timezone";
 import ffmpeg from 'fluent-ffmpeg';
-import { PassThrough } from 'stream';
+import { PassThrough, Readable } from 'stream';
 import axios from 'axios';
 import getStream from 'get-stream';
 import { Tiktoken } from 'tiktoken/lite';
+
 
 export function getMsgData(message: Message): {command: string, content: string}{
   const command = message.body.split(' ')[0];
@@ -143,4 +144,37 @@ export function getLastElementsArray(array, qty) {
   if (array.length <= qty) return array;
   const inicio = array.length - qty;
   return array.slice(inicio);
+}
+
+ /**
+ * Convierte un buffer en un ReadableStream.
+ * @param buffer El buffer de entrada.
+ * @returns Un stream de lectura (ReadStream).
+ */
+export function bufferToStream(buffer) {
+   const stream = new Readable();
+   stream.push(buffer);
+   stream.push(null);
+   return stream;
+ }
+
+export async function convertToOgg(buffer) {
+  return new Promise((resolve, reject) => {
+    const inputStream = new Readable();
+    inputStream.push(buffer);
+    inputStream.push(null);
+
+    const outputStream = new PassThrough(); // Create a PassThrough stream to capture the Ogg output
+
+    const outputBuffers: any[] = [];
+
+    outputStream.on('data', (data) => outputBuffers.push(data)); // Collect chunks into an array
+    outputStream.on('end', () => resolve(Buffer.concat(outputBuffers))); // Concatenate and resolve as a single Buffer
+    outputStream.on('error', (err) => reject(err)); // Handle errors
+
+    ffmpeg()
+      .input(inputStream)
+      .toFormat('ogg')
+      .pipe(outputStream); // Pipe the output to the PassThrough stream
+  });
 }
