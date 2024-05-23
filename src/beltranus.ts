@@ -36,13 +36,13 @@ import TextBlock = Anthropic.TextBlock;
 
 export class Beltranus {
 
-  private client
+  private client;
   private chatGpt: ChatGTP;
   private claude: Claude;
   private fakeyouService: FakeyouService;
   private db: PostgresClient;
   private chatConfigs: ChatCfg[];
-  private allowedTypes = [MessageTypes.STICKER, MessageTypes.TEXT, MessageTypes.IMAGE, MessageTypes.VOICE];
+  private allowedTypes = [MessageTypes.STICKER, MessageTypes.TEXT, MessageTypes.IMAGE, MessageTypes.VOICE, MessageTypes.AUDIO];
   private aiConfig = {
     aiLanguage: AiLanguage.OPENAI,
     model: ClaudeModel.SONNET
@@ -144,15 +144,20 @@ export class Beltranus {
 
       // Sends message to ChatGPT
       chatData.sendStateTyping();
-      const chatResponseString = await this.processMessage(chatData, chatCfg, isPersonalChat);
+      let chatResponseString = await this.processMessage(chatData, chatCfg, isPersonalChat);
       chatData.clearState();
 
       if(!chatResponseString) return;
 
-      if(message.type == MessageTypes.VOICE)
+      // Evaluate if message must be Audio or Text
+      if (chatResponseString.startsWith('<Audio>')) {
+        chatResponseString = chatResponseString.replace('<Audio>','').trim();
         return this.speak(message, chatData, chatResponseString, 'mp3');
-      else
+      } else {
+        chatResponseString = chatResponseString.replace('<Text>','').trim();
         return this.returnResponse(message, chatResponseString, chatData.isGroup);
+      }
+
     } catch (e: any) {
       logger.error(e.message);
       return message.reply('Tuve un Error con tu mensaje 😔. Intenta usar "-reset" para reiniciar la conversación.');
@@ -280,27 +285,25 @@ export class Beltranus {
       const msgDate = new Date(msg.timestamp * 1000);
       const timeDifferenceHours = (actualDate.getTime() - msgDate.getTime()) / (1000 * 60 * 60);
       const isImage = msg.type == MessageTypes.STICKER || msg.type === MessageTypes.IMAGE;
-      const isAudio = msg.type == MessageTypes.AUDIO;
-      const isVoice = msg.type === MessageTypes.VOICE;
+      const isAudio = msg.type == MessageTypes.AUDIO || msg.type === MessageTypes.VOICE;
 
       if (timeDifferenceHours > chatCfg.hourslimit) continue;
 
       if (!this.allowedTypes.includes(msg.type) && !isAudio) continue;
 
       // Check if the message includes media
-      const media = isImage || isVoice? await msg.downloadMedia() : null;
+      const media = isImage? await msg.downloadMedia() : null;
 
       const role = msg.fromMe ? AiRole.ASSISTANT : AiRole.USER;
       const name = msg.fromMe ? capitalizeString(chatCfg.prompt_name) : (await getContactName(msg));
 
       const content: Array<AiContent> = [];
       if (isImage && media) content.push({ type: 'image', value: media.data, media_type: media.mimetype });
-      if (isVoice && media) {
+      if (isAudio && media) {
         const transcriptionPromise = this.transcribeVoice(media, msg);
         transcriptionPromises.push({ index: messageList.length, promise: transcriptionPromise });
         content.push({ type: 'text', value: '<Transcribiendo mensaje de voz...>' });
       }
-      if (isAudio)          content.push({ type: 'text', value: `<Audio Message>` });
       if (msg.body)         content.push({ type: 'text', value: (chatData.isGroup && !msg.fromMe? `${name}: ` : '') + msg.body });
 
       // Estimar el conteo de tokens para el mensaje actual
@@ -316,27 +319,15 @@ export class Beltranus {
 
     // Wait for all transcriptions to complete
     const transcriptions = await Promise.all(transcriptionPromises.map(t => t.promise));
-
-    console.log('----------');
-    console.log('Transcriptions:', transcriptions);
-    console.log('MessageList before transcription mapping:', JSON.stringify(messageList, null, 2));
-
     transcriptionPromises.forEach((transcriptionPromise, idx) => {
       const transcription = transcriptions[idx];
       const messageIdx = transcriptionPromise.index;
-
-      console.log('Applying transcription to message:', { transcription, messageIdx, messageContent: messageList[messageIdx].content });
-
-      // Reemplaza el marcador <Transcribiendo mensaje de voz...> con la transcripción
       messageList[messageIdx].content = messageList[messageIdx].content.map(c =>
         c.type === 'text' && c.value === '<Transcribiendo mensaje de voz...>'
           ? { type: 'text', value: transcription }
           : c
       );
-
-      console.log('MessageList after application:', JSON.stringify(messageList, null, 2));
     });
-    console.log('MessageList after all transcriptions:', JSON.stringify(messageList, null, 2));
 
     // If no new messages are present, return without action
     if (messageList.length == 0) return;
@@ -384,16 +375,13 @@ export class Beltranus {
       // Generate speech audio from the given text content using the OpenAI API.
       const audioBuffer = await this.chatGpt.speech(messageToSay, responseFormat);
       const oggBase64 = audioBuffer.toString('base64');
-      // const oggBuffer = await convertToOgg(audioBuffer) as any;
-      // const oggBase64 = oggBuffer.toString('base64');
 
-      //let audioMedia = new MessageMedia('audio/ogg; codecs=opus', oggBase64, 'voice.ogg');
       let audioMedia = new MessageMedia('audio/ogg; codecs=opus', oggBase64, 'voice.ogg');
 
       // Reply to the message with the synthesized speech audio.
       const repliedMsg = await message.reply(audioMedia, undefined, { sendAudioAsVoice: true });
 
-      this.cache.set(repliedMsg.id._serialized, messageToSay, CONFIG.botConfig.redisCacheTime);
+      this.cache.set(repliedMsg.id._serialized, '<Audio>'+messageToSay, CONFIG.botConfig.redisCacheTime);
     } catch (e: any) {
       logger.error(`Error in speak function: ${e.message}`);
       throw e;
@@ -652,7 +640,7 @@ export class Beltranus {
       logger.debug(`[ChatGTP->transcribeVoice] Texto transcrito: ${transcribedText}`);
 
       // Agregar el prefijo informativo
-      const finalMessage = `<TranscribedAudio>${transcribedText}`;
+      const finalMessage = `<Audio>${transcribedText}`;
 
       // Se guarda en cache
       this.cache.set(message.id._serialized, finalMessage, CONFIG.botConfig.redisCacheTime);

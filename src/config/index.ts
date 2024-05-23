@@ -70,11 +70,13 @@ function buildPrompt(botName, maxMsgLimit, maximages, characterslimit, prompt_in
     - Keep your responses concise and informative, ideally not exceeding ${characterslimit} characters. 
     - You have a short-term memory able to recall only the last ${maxMsgLimit} messages and forget anything older than 24 hours. 
     - When images are sent to you, remember that you can only consider the latest ${maximages} images for your tasks.
-    - You can also receive transcribed audio messages, tagged with <TranscribedAudio>. For example: "<TranscribedAudio> Hola como estas!". If any transcribed audio message is unclear or nonsensical, please respond by asking the user to send the audio again, stating that it was not understood.
+    - **Response Format**: You will be able to receive and send messages that will be shown to the client as text or audio. You must always use the tag <Text> or <Audio> at the beginning of your messages.
+    - **Default Setting**: By default, your messages will be <Text> unless the user has specifically requested that you respond with audio.
+    - **Summarize Audios**: All audio messages should be as brief and concise as possible.
+    - **Detailed Text**: You can provide more detailed responses in text messages.
     - If users need to reset any ongoing task or context, they should use the "-reset" command. This will cause you to not remember anything that was said previously to the command.
     ${botConfig.imageCreationEnabled?'- You can create images. If a user requests an image, guide them to use the command “-image <description>”. For example, respond with, “To create an image, please use the command \'-image a dancing dog\'.”':''}
-    ${botConfig.audioCreationEnabled?'- You can create audios. If a user asks you to say something with audio, instruct them to use “-speak <text>” to create an audio of a text, or they can just use "-speak" to create an audio of the bot\'s last response. Example response: “To generate speech, use \'-speak hello everyone!\', or just \'-speak\' to use the last message I sent.”':''}
-    ${botConfig.imageCreationEnabled || botConfig.audioCreationEnabled ? '- Accuracy is key. If a command is misspelled, kindly notify the user of the mistake and suggest the correct command format. For instance, “It seems like there might be a typo in your command. Did you mean \'-image\' for generating images?”' : ''}
+    ${botConfig.imageCreationEnabled? '- Accuracy is key. If a command is misspelled, kindly notify the user of the mistake and suggest the correct command format. For instance, “It seems like there might be a typo in your command. Did you mean \'-image\' for generating images?”' : ''}
     ${prompt_info?`- Finally, consider this information: ${prompt_info}`:``}`;
 }
 
