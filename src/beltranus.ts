@@ -292,7 +292,7 @@ export class Beltranus {
       if (!this.allowedTypes.includes(msg.type) && !isAudio) continue;
 
       // Check if the message includes media
-      const media = isImage? await msg.downloadMedia() : null;
+      const media = isImage || isAudio? await msg.downloadMedia() : null;
 
       const role = msg.fromMe ? AiRole.ASSISTANT : AiRole.USER;
       const name = msg.fromMe ? capitalizeString(chatCfg.prompt_name) : (await getContactName(msg));
@@ -304,12 +304,12 @@ export class Beltranus {
         transcriptionPromises.push({ index: messageList.length, promise: transcriptionPromise });
         content.push({ type: 'text', value: '<Transcribiendo mensaje de voz...>' });
       }
-      if (msg.body)         content.push({ type: 'text', value: (chatData.isGroup && !msg.fromMe? `${name}: ` : '') + msg.body });
+      if (msg.body)         content.push({ type: 'text', value: '<Text>'+(chatData.isGroup && !msg.fromMe? `${name}: ` : '') + msg.body });
 
       // Estimar el conteo de tokens para el mensaje actual
       let currentMessageTokens;
       if(isImage && media) currentMessageTokens = this.imageTokens; // Usa la función auxiliar contarTokens para estimar la cantidad de tokens.
-      else currentMessageTokens = await contarTokens(content[0].value as string)
+      else if(!isAudio) currentMessageTokens = await contarTokens(content[0].value as string)
 
       if ((totalTokens + currentMessageTokens) > chatCfg.maxtokens) break; // Si agregar este mensaje supera el límite de tokens, detener el bucle.
       totalTokens += currentMessageTokens; // Acumular tokens.
