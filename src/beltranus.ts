@@ -152,7 +152,7 @@ export class Beltranus {
       // Evaluate if message must be Audio or Text
       if (chatResponseString.startsWith('<Audio>')) {
         chatResponseString = chatResponseString.replace('<Audio>','').trim();
-        return this.speak(message, chatData, chatResponseString, 'mp3');
+        return this.speak(message, chatData, chatResponseString, chatCfg.voice_id as CVoices);
       } else {
         chatResponseString = chatResponseString.replace('<Text>','').trim();
         return this.returnResponse(message, chatResponseString, chatData.isGroup);
@@ -202,7 +202,7 @@ export class Beltranus {
         return await this.createImage(message, commandMessage);
       case "speak":
         if (!CONFIG.botConfig.audioCreationEnabled) return;
-        return await this.speak(message, chatData, commandMessage);
+        return await this.speak(message, chatData, commandMessage, CVoices.SARAH);
       case "reloadConfig":
         await this.loadChatConfigs();
         return message.reply('Reload OK');
@@ -368,13 +368,13 @@ export class Beltranus {
    * Returns:
    * - A promise that either resolves when the audio message has been successfully sent, or rejects if an error occurs during the process.
    */
-  private async speak(message: Message, chatData: Chat, content: string | undefined, responseFormat?) {
+  private async speak(message: Message, chatData: Chat, content: string | undefined, voiceId: CVoices) {
     // Set the content to be spoken. If no content is explicitly provided, fetch the last bot reply for use.
     let messageToSay = content || await this.getLastBotMessage(chatData);
     try {
       // Generate speech audio from the given text content using the OpenAI API.
       //const audioBuffer = await this.chatGpt.speech(messageToSay, responseFormat);
-      const audioRaw: boolean | string = await elevenTTS(CVoices.SARAH, messageToSay, CModel.SPANISH);
+      const audioRaw: boolean | string = await elevenTTS(voiceId || CVoices.SARAH, messageToSay, CModel.SPANISH);
       const base64Audio = await convertStreamToMessageMedia(audioRaw);
 
       let audioMedia = new MessageMedia('audio/mp3; codecs=opus', base64Audio, 'voice.mp3');

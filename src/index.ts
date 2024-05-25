@@ -28,8 +28,8 @@ client.on('message', async (message: Message) => {
 client.on('auth_failure', err => {
   console.error(err);
 });
-client.on('authenticated', t => {
-  console.log(t);
+client.on('authenticated', () => {
+  console.log('Authentiaction OK');
 });
 
 try {

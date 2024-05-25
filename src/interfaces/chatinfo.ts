@@ -11,6 +11,7 @@ export interface ChatCfg {
   buildprompt: boolean;
   maxtokens: number;
   maximages: number;
+  voice_id: string;
 }
 
 export enum GPTRol{

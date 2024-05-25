@@ -14,6 +14,7 @@ export enum CVoices {
   WENCHO = 'cNX4JVnC2gBtWgNynNSt',
   NOXFER = 'jlV396zr6NdomGXoB5aK',
   SARAH = 'EXAVITQu4vr4xnSDxMaL',
+  ELEGUAR = 'q2XMPZ6icuVDBj7rgCxQ',
 }
 
 export enum CModel {
