@@ -1,4 +1,4 @@
-import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, { AxiosResponse } from 'axios';
 import { OpenAIREsponse } from '../interfaces/predict-response';
 import logger from '../logger';
 import { Readable } from 'stream';
@@ -13,6 +13,7 @@ export enum CVoices {
   PINOCHO = 'qcv1vSIo5ukABa4OPPm2',
   WENCHO = 'cNX4JVnC2gBtWgNynNSt',
   NOXFER = 'jlV396zr6NdomGXoB5aK',
+  SARAH = 'EXAVITQu4vr4xnSDxMaL',
 }
 
 export enum CModel {
@@ -27,8 +28,10 @@ export async function elevenTTS(voice: CVoices, msg: string, model: CModel): Pro
     text: msg,
     model_id: model || CModel.SPANISH,
     voice_settings: {
-      stability: 0.4,
-      similarity_boost: 1,
+      stability: 0.7,
+      similarity_boost: 0.7,
+      style: 0.25,
+      use_speaker_boost: true
     },
   };
   const headers = {
@@ -48,14 +51,12 @@ export async function elevenTTS(voice: CVoices, msg: string, model: CModel): Pro
   try {
     const response: AxiosResponse<OpenAIREsponse> = await axios(options);
 
-    const readable = new Readable({
+    return new Readable({
       read() {
         this.push(response.data);
         this.push(null);
       },
     });
-
-    return readable;
   } catch (error) {
     logger.error(error);
   }

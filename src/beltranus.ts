@@ -373,10 +373,11 @@ export class Beltranus {
     let messageToSay = content || await this.getLastBotMessage(chatData);
     try {
       // Generate speech audio from the given text content using the OpenAI API.
-      const audioBuffer = await this.chatGpt.speech(messageToSay, responseFormat);
-      const oggBase64 = audioBuffer.toString('base64');
+      //const audioBuffer = await this.chatGpt.speech(messageToSay, responseFormat);
+      const audioRaw: boolean | string = await elevenTTS(CVoices.SARAH, messageToSay, CModel.SPANISH);
+      const base64Audio = await convertStreamToMessageMedia(audioRaw);
 
-      let audioMedia = new MessageMedia('audio/ogg; codecs=opus', oggBase64, 'voice.ogg');
+      let audioMedia = new MessageMedia('audio/mp3; codecs=opus', base64Audio, 'voice.mp3');
 
       // Reply to the message with the synthesized speech audio.
       const repliedMsg = await message.reply(audioMedia, undefined, { sendAudioAsVoice: true });
