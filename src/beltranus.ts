@@ -150,11 +150,11 @@ export class Beltranus {
       if(!chatResponseString) return;
 
       // Evaluate if message must be Audio or Text
-      if (chatResponseString.startsWith('<Audio>')) {
-        chatResponseString = chatResponseString.replace('<Audio>','').trim();
+      if (chatResponseString.startsWith('[Audio]')) {
+        chatResponseString = chatResponseString.replace('[Audio]','').trim();
         return this.speak(message, chatData, chatResponseString, chatCfg.voice_id as CVoices);
       } else {
-        chatResponseString = chatResponseString.replace('<Text>','').trim();
+        chatResponseString = chatResponseString.replace('[Text]','').trim();
         return this.returnResponse(message, chatResponseString, chatData.isGroup);
       }
 
@@ -304,7 +304,7 @@ export class Beltranus {
         transcriptionPromises.push({ index: messageList.length, promise: transcriptionPromise });
         content.push({ type: 'text', value: '<Transcribiendo mensaje de voz...>' });
       }
-      if (msg.body)         content.push({ type: 'text', value: '<Text>'+(chatData.isGroup && !msg.fromMe? `${name}: ` : '') + msg.body });
+      if (msg.body)         content.push({ type: 'text', value: '[Text]'+(chatData.isGroup && !msg.fromMe? `${name}: ` : '') + msg.body });
 
       // Estimar el conteo de tokens para el mensaje actual
       let currentMessageTokens;
@@ -323,9 +323,7 @@ export class Beltranus {
       const transcription = transcriptions[idx];
       const messageIdx = transcriptionPromise.index;
       messageList[messageIdx].content = messageList[messageIdx].content.map(c =>
-        c.type === 'text' && c.value === '<Transcribiendo mensaje de voz...>'
-          ? { type: 'text', value: transcription }
-          : c
+        c.type === 'text' && c.value === '<Transcribiendo mensaje de voz...>'? { type: 'text', value: transcription } : c
       );
     });
 
@@ -382,7 +380,7 @@ export class Beltranus {
       // Reply to the message with the synthesized speech audio.
       const repliedMsg = await message.reply(audioMedia, undefined, { sendAudioAsVoice: true });
 
-      this.cache.set(repliedMsg.id._serialized, '<Audio>'+messageToSay, CONFIG.botConfig.redisCacheTime);
+      this.cache.set(repliedMsg.id._serialized, '[Audio]'+messageToSay, CONFIG.botConfig.redisCacheTime);
     } catch (e: any) {
       logger.error(`Error in speak function: ${e.message}`);
       throw e;
@@ -641,7 +639,7 @@ export class Beltranus {
       logger.debug(`[ChatGTP->transcribeVoice] Texto transcrito: ${transcribedText}`);
 
       // Agregar el prefijo informativo
-      const finalMessage = `<Audio>${transcribedText}`;
+      const finalMessage = `[Audio]${transcribedText}`;
 
       // Se guarda en cache
       this.cache.set(message.id._serialized, finalMessage, CONFIG.botConfig.redisCacheTime);

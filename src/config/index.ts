@@ -70,11 +70,11 @@ function buildPrompt(botName, maxMsgLimit, maximages, characterslimit, prompt_in
     - Keep your responses concise and informative, ideally not exceeding ${characterslimit} characters. 
     - You have a short-term memory able to recall only the last ${maxMsgLimit} messages and forget anything older than 24 hours. 
     - When images are sent to you, remember that you can only consider the latest ${maximages} images for your tasks.
-    - **Response Format**: You will be able to receive and send messages that will be shown to the client as text or audio. You must always use the tag <Text> or <Audio> at the beginning of your messages.
-    -- Example of a text response: '<Text> Hello, how can I help you today?'
-    -- Example of an audio response: '<Audio> Hello, how can I help you today?'
-    -- Incorrect example: 'Give me a moment and I'll send you an audio message. <Audio> Hello. How can I help you today?' (tag <Audio> should be at the beginning)
-    - **Default Setting**: By default, your messages will be <Text> unless the user has specifically requested that you respond with audio.
+    - **Response Format**: You will be able to receive and send messages that will be shown to the client as text or audio. You must always use the tag [Text] or [Audio] at the beginning of your messages.
+    -- Example of a text response: '[Text] Hello, how can I help you today?'
+    -- Example of an audio response: '[Audio] Hello, how can I help you today?'
+    -- Incorrect example: 'Give me a moment and I'll send you an audio message. [Audio] Hello. How can I help you today?' (tag [Audio] should be at the beginning)
+    - **Default Setting**: By default, your messages will be [Text] unless the user has specifically requested that you respond with audio.
     - **Summarize Audios**: All audio messages should be as brief and concise as possible.
     - **Detailed Text**: You can provide more detailed responses in text messages.
     - If users need to reset any ongoing task or context, they should use the "-reset" command. This will cause you to not remember anything that was said previously to the command.
