@@ -66,9 +66,9 @@ export class Beltranus {
     this.chatConfigs = chatConfigs.sort((a, b) => (a.groups === '*' ? 1 : b.groups === '*' ? -1 : 0));
   }
 
-  private async getChatConfig(message: Message, chatData: Chat, isPersonalChat: boolean): Promise<ChatCfg | null>{
+  private async getChatConfig(message: Message, chatData: Chat, isCreatorPersonalChat: boolean): Promise<ChatCfg | null>{
     //Si soy yo hablando directo retorna Tars
-    if(isPersonalChat) return this.chatConfigs.find(p=> p.prompt_name.toLowerCase() == 'tars') as ChatCfg;
+    if(isCreatorPersonalChat) return this.chatConfigs.find(p=> p.prompt_name.toLowerCase() == 'tars') as ChatCfg;
 
     /** Se recorre configuraciones guardadas */
     for (const chatCfg of this.chatConfigs) {
@@ -114,7 +114,8 @@ export class Beltranus {
       const chatData: Chat = await message.getChat();
       const contactData: Contact = await message.getContact();
       const { command, commandMessage } = parseCommand(message.body);
-      const isPersonalChat = contactData.number == CONFIG.botConfig.personalNumber && !chatData.isGroup;
+      const isCreator = contactData.number == CONFIG.botConfig.personalNumber;
+      const isCreatorPersonalChat = isCreator && !chatData.isGroup;
 
       //Numeros restringidos
       if(CONFIG.botConfig.restrictedNumbers.includes(contactData.number)){
@@ -128,7 +129,7 @@ export class Beltranus {
       if(!this.allowedTypes.includes(message.type) || message.type == MessageTypes.AUDIO) return false;
 
       // Se evalua si corresponde a algun bot
-      let chatCfg: ChatCfg = await this.getChatConfig(message, chatData, isPersonalChat) as ChatCfg;
+      let chatCfg: ChatCfg = await this.getChatConfig(message, chatData, isCreatorPersonalChat) as ChatCfg;
       if(chatCfg == null && !command) return false;
 
       // Logs the message
@@ -137,14 +138,14 @@ export class Beltranus {
       // Evaluates if it should go to the command flow
       if(!!command){
         await chatData.sendStateTyping();
-        await this.commandSelect(message, chatData, chatCfg);
+        await this.commandSelect(message, chatData, chatCfg, isCreator);
         await chatData.clearState();
         return true;
       }
 
       // Sends message to ChatGPT
       chatData.sendStateTyping();
-      let chatResponseString = await this.processMessage(chatData, chatCfg, isPersonalChat);
+      let chatResponseString = await this.processMessage(chatData, chatCfg, isCreatorPersonalChat);
       chatData.clearState();
 
       if(!chatResponseString) return;
@@ -192,14 +193,17 @@ export class Beltranus {
    *   initiated, or `void` if no recognized command is found or the command functionality is
    *   disabled through the bot's configuration.
    */
-  private async commandSelect(message: Message, chatData: Chat, chatCfg: ChatCfg) {
+  private async commandSelect(message: Message, chatData: Chat, chatCfg: ChatCfg, isCreator = false) {
     const { command, commandMessage } = parseCommand(message.body);
     switch (command) {
       case "a":
         return await this.customMp3(message, <string> commandMessage);
       case "image":
-        if (!CONFIG.botConfig.imageCreationEnabled) return;
-        return await this.createImage(message, commandMessage);
+        if(isCreator || CONFIG.botConfig.imageCreationEnabled)
+          return await this.createImage(message, commandMessage);
+        if(!isCreator && !CONFIG.botConfig.imageCreationEnabled)
+          return message.reply('Solo mi gran creador Diego puede usar esta función. 👺');
+        break;
       case "speak":
         if (!CONFIG.botConfig.audioCreationEnabled) return;
         return await this.speak(message, chatData, commandMessage, CVoices.SARAH);
@@ -254,6 +258,7 @@ export class Beltranus {
    *
    * @param chatData - The Chat object representing the conversation context.
    * @param chatCfg - The ChatCfg object containing configuration settings for the bot's behavior.
+   * @param isPersonal - Whether the message is a personal message or not.
    * @returns A promise that resolves with the generated response string, or null if no response is needed.
    */
   private async processMessage(chatData: Chat, chatCfg: ChatCfg, isPersonal: boolean) {

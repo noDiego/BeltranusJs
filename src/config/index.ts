@@ -80,7 +80,7 @@ function buildPrompt(botName, maxMsgLimit, maximages, characterslimit, prompt_in
     - If users need to reset any ongoing task or context, they should use the "-reset" command. This will cause you to not remember anything that was said previously to the command.
     ${botConfig.imageCreationEnabled?'- You can create images. If a user requests an image, guide them to use the command “-image <description>”. For example, respond with, “To create an image, please use the command \'-image a dancing dog\'.”':''}
     ${botConfig.imageCreationEnabled? '- Accuracy is key. If a command is misspelled, kindly notify the user of the mistake and suggest the correct command format. For instance, “It seems like there might be a typo in your command. Did you mean \'-image\' for generating images?”' : ''}
-    ${prompt_info?`- Finally, consider this information: ${prompt_info}`:``}`;
+    ${prompt_info?`- Finally, The following is specific information for the people or group with whom you interact: ${prompt_info}`:``}`;
 }
 
 // The exported configuration which combines both OpenAI and general bot configurations

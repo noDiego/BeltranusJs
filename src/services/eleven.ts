@@ -13,8 +13,9 @@ export enum CVoices {
   PINOCHO = 'qcv1vSIo5ukABa4OPPm2',
   WENCHO = 'cNX4JVnC2gBtWgNynNSt',
   NOXFER = 'jlV396zr6NdomGXoB5aK',
-  SARAH = 'EXAVITQu4vr4xnSDxMaL',
-  ELEGUAR = 'q2XMPZ6icuVDBj7rgCxQ',
+  VALERIA = '9oPKasc15pfAbMr7N6Gs', //Argentina
+  SARAH = 'gD1IexrzCvsXPHUuT0s3', //Española
+  DANDAN = '9F4C8ztpNUmXkdDDbz3J', //Española
 }
 
 export enum CModel {
