@@ -304,7 +304,7 @@ export class Beltranus {
         transcriptionPromises.push({ index: messageList.length, promise: transcriptionPromise });
         content.push({ type: 'text', value: '<Transcribiendo mensaje de voz...>' });
       }
-      if (msg.body)         content.push({ type: 'text', value: '[Text]'+(chatData.isGroup && !msg.fromMe? `${name}: ` : '') + msg.body });
+      if (msg.body) content.push({ type: 'text', value: '[Text]' + msg.body });
 
       // Estimar el conteo de tokens para el mensaje actual
       let currentMessageTokens;

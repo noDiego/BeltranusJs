@@ -6,10 +6,11 @@ const { Client } = require('whatsapp-web.js');
 const client = new Client({
   webVersionCache:
     {
-      remotePath: './local-html/2.2413.51-beta-alt.html',
-      type: 'local'
+      remotePath: 'https://raw.githubusercontent.com/guigo613/alternative-wa-version/main/html/2.2411.2.html',
+      type: 'remote'
     }
 });
+
 const beltranus: Beltranus = new Beltranus(client);
 require('dotenv').config();
 
