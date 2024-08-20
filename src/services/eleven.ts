@@ -18,8 +18,8 @@ export enum CVoices {
 }
 
 export enum CModel {
-  ENGLISH = 'eleven_monolingual_v2',
-  SPANISH = 'eleven_multilingual_v2'
+  ENGLISH = 'eleven_turbo_v2_5',
+  SPANISH = 'eleven_turbo_v2_5'
 }
 
 export async function elevenTTS(voice: CVoices, msg: string, model: CModel): Promise<any> {
