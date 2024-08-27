@@ -4,7 +4,7 @@ import logger from '../logger';
 import { Readable } from 'stream';
 
 export enum CVoices {
-  JIRO = 'BWDzJ8HGBnd2LKnzyNZW',
+  JIRO = 'MtkHkdD3cw8GUlrgMMuM',
   DARKAYSER = 'kSv7ExgVZm6PJMseGkKu',
   CHAINER = '170l9BgOYvdt9LkK6Bkg',
   CAIN = 'zq4MUhutQpQKs3OA6fgF',
@@ -16,6 +16,7 @@ export enum CVoices {
   VALERIA = '9oPKasc15pfAbMr7N6Gs', //Argentina
   SARAH = 'gD1IexrzCvsXPHUuT0s3', //Española
   DANDAN = '9F4C8ztpNUmXkdDDbz3J', //Española
+  CAMILA = 'k8fyM7r8e13c8YeLhcrC'
 }
 
 export enum CModel {
