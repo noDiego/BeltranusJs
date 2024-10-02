@@ -52,8 +52,8 @@ const fakeyou = {
   };
 
 const eleven = {
-  model_spanish: 'eleven_multilingual_v2',
-  model_english: 'eleven_multilingual_v2'
+  model_spanish: process.env.ELEVEN_SPANISH_MODEL || 'eleven_multilingual_v2',
+  model_english: process.env.ELEVEN_ENGLISH_MODEL || 'eleven_multilingual_v2'
 };
 
 // General bot configuration parameters
