@@ -19,7 +19,7 @@ import FakeyouService from './services/fakeyou';
 import { PostgresClient } from './database/postgresql';
 import { ChatCfg } from './interfaces/chatinfo';
 import { CONFIG } from './config';
-import { CModel, CVoices, elevenTTS } from './services/eleven';
+import { CVoices, elevenTTS } from './services/eleven';
 import * as fs from 'fs';
 import path from 'path';
 import { FakeyouModel } from './interfaces/fakeyou.interfaces';
@@ -216,7 +216,7 @@ export class Beltranus {
       case "reset":
         return await message.react('👍');
       case "sp":
-        return await this.eleven(message, CModel.SPANISH);
+        return await this.eleven(message, CONFIG.eleven.model_spanish);
       case "changeModel":
         return this.changeModel(message, <string>commandMessage);
       default:
@@ -351,7 +351,7 @@ export class Beltranus {
     // Send the message and return the text response
     if (this.aiConfig.aiLanguage == AiLanguage.OPENAI) {
       const convertedMessageList: ChatCompletionMessageParam[] = this.convertIaMessagesLang(messageList, AiLanguage.OPENAI) as ChatCompletionMessageParam[];
-      return await this.chatGpt.sendMessages(convertedMessageList, promptText);
+      return await this.chatGpt.sendMessages(convertedMessageList, promptText, chatCfg.ai_model);
     } else if (this.aiConfig.aiLanguage == AiLanguage.ANTHROPIC) {
       const convertedMessageList: MessageParam[] = this.convertIaMessagesLang(messageList, AiLanguage.ANTHROPIC) as MessageParam[];
       return await this.claude.sendChat(convertedMessageList, promptText, isPersonal? ClaudeModel.OPUS: this.aiConfig.model);
@@ -377,7 +377,7 @@ export class Beltranus {
     try {
       // Generate speech audio from the given text content using the OpenAI API.
       //const audioBuffer = await this.chatGpt.speech(messageToSay, responseFormat);
-      const audioRaw: boolean | string = await elevenTTS(voiceId || CVoices.SARAH, messageToSay, CModel.SPANISH);
+      const audioRaw: boolean | string = await elevenTTS(voiceId || CVoices.SARAH, messageToSay, CONFIG.eleven.model_spanish);
       const base64Audio = await convertStreamToMessageMedia(audioRaw);
 
       let audioMedia = new MessageMedia('audio/mp3; codecs=opus', base64Audio, 'voice.mp3');
@@ -450,7 +450,7 @@ export class Beltranus {
     return await message.reply(audioMedia, undefined,  messageOptions);
   }
 
-  private async eleven(message: Message, model: CModel) {
+  private async eleven(message: Message, model: string) {
     const {command, content} = getMsgData(message);
     let words = content.split(' ');
     const texto = words.slice(1).join(" ");

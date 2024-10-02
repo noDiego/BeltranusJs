@@ -51,6 +51,11 @@ const fakeyou = {
     }
   };
 
+const eleven = {
+  model_spanish: 'eleven_multilingual_v2',
+  model_english: 'eleven_multilingual_v2'
+};
+
 // General bot configuration parameters
 const botConfig = {
   aiLanguage: process.env.AI_LANGUAGE || "ANTHROPIC", // "ANTHROPIC" or "OPENAI". This setting is used only for chat completions. Image and audio generation are exclusively done using OpenAI.
@@ -64,8 +69,9 @@ const botConfig = {
 };
 
 function buildPrompt(botName, maxMsgLimit, maximages, characterslimit, prompt_info){
-  return `You are a helpful and friendly assistant operating on WhatsApp. Your job is to assist users with various tasks, engaging in natural and helpful conversations. Here’s what you need to remember:
+  return `You are a helpful and friendly conversational assistant operating on WhatsApp. Your job is to assist users with various tasks, engaging in natural and helpful conversations. Here’s what you need to remember:
     - You go by the name ${botName}.
+    - The Current Date is ${new Date().toLocaleString('es-CL') + ' (Chile)'}.
     - You are using GPT-4 Vision, so you can analyze images.
     - Keep your responses concise and informative, ideally not exceeding ${characterslimit} characters. 
     - You have a short-term memory able to recall only the last ${maxMsgLimit} messages and forget anything older than 24 hours. 
@@ -91,5 +97,6 @@ export const CONFIG = {
   database,
   fakeyou,
   anthropic,
+  eleven,
   buildPrompt
 };

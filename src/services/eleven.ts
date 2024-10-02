@@ -2,6 +2,7 @@ import axios, { AxiosResponse } from 'axios';
 import { OpenAIREsponse } from '../interfaces/predict-response';
 import logger from '../logger';
 import { Readable } from 'stream';
+import { CONFIG } from '../config';
 
 export enum CVoices {
   JIRO = 'MtkHkdD3cw8GUlrgMMuM',
@@ -19,17 +20,12 @@ export enum CVoices {
   CAMILA = 'k8fyM7r8e13c8YeLhcrC'
 }
 
-export enum CModel {
-  ENGLISH = 'eleven_turbo_v2_5',
-  SPANISH = 'eleven_turbo_v2_5'
-}
-
-export async function elevenTTS(voice: CVoices, msg: string, model: CModel): Promise<any> {
+export async function elevenTTS(voice: CVoices, msg: string, model: string): Promise<any> {
 
   const url = `https://api.elevenlabs.io/v1/text-to-speech/${voice}`;
   const body = {
     text: msg,
-    model_id: model || CModel.SPANISH,
+    model_id: model || CONFIG.eleven.model_spanish,
     voice_settings: {
       stability: 0.7,
       similarity_boost: 0.7,
