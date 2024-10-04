@@ -85,9 +85,9 @@ export class ChatGTP {
     const response = await this.openai.images.generate({
       model: CONFIG.openAI.imageCreationModel,
       prompt: message,
-      quality: 'standard',
+      quality: 'hd',
       n: 1,
-      size: "512x512",
+      size: "1024x1024",
     });
     return response.data[0].url;
   }
