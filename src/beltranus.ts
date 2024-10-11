@@ -151,7 +151,10 @@ export class Beltranus {
       if(!chatResponseString) return;
 
       // Evaluate if message must be Audio or Text
-      if (chatResponseString.startsWith('[Audio]')) {
+      if (chatResponseString.startsWith('[Image]')) {
+        chatResponseString = chatResponseString.replace('[Image]','').trim();
+        return this.createImage(message, chatResponseString, isCreator);
+      } else if (chatResponseString.startsWith('[Audio]')) {
         chatResponseString = chatResponseString.replace('[Audio]','').trim();
         return this.speak(message, chatData, chatResponseString, chatCfg.voice_id as CVoices);
       } else {
@@ -200,9 +203,8 @@ export class Beltranus {
         return await this.customMp3(message, <string> commandMessage);
       case "image":
         if(isCreator || CONFIG.botConfig.imageCreationEnabled)
-          return await this.createImage(message, commandMessage);
-        if(!isCreator && !CONFIG.botConfig.imageCreationEnabled)
-          return message.reply('Solo mi gran creador Diego puede usar esta función. 👺');
+          return await this.createImage(message, commandMessage, isCreator);
+        return true;
         break;
       case "speak":
         if (!CONFIG.botConfig.audioCreationEnabled) return;
@@ -404,9 +406,13 @@ export class Beltranus {
    * Returns:
    * - A promise that either resolves when the image has been successfully sent, or rejects if an error occurs during the image generation or sending process.
    */
-  private async createImage(message: Message, content: string | undefined) {
+  private async createImage(message: Message, content: string | undefined, isCreator: boolean) {
     // Verify that content is provided for image generation, return if not.
     if (!content) return;
+
+
+    if(!isCreator && !CONFIG.botConfig.imageCreationEnabled)
+      return message.reply('Lo siento, pero solo mi gran creador Diego puede crear imagenes. 👺');
 
     try {
       // Calls the ChatGPT service to generate an image based on the provided textual content.

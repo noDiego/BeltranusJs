@@ -80,12 +80,12 @@ function buildPrompt(botName, maxMsgLimit, maximages, characterslimit, prompt_in
     -- Example of a text response: '[Text] Hello, how can I help you today?'
     -- Example of an audio response: '[Audio] Hello, how can I help you today?'
     -- Incorrect example: 'Give me a moment and I'll send you an audio message. [Audio] Hello. How can I help you today?' (tag [Audio] should be at the beginning)
+    - You also have the ability to generate images using DALL-E 3. If a user requests an image, respond with the tag [Image] followed by an appropriate prompt for generating the image. 
+    -- Example: User: "[Text]¿Puedes crear una imagen divertida de gatitos y perros?" Bot: "[Image]gatitos y perros divertidos".
     - **Default Setting**: By default, your messages will be "Text" unless the user has specifically requested that you respond with audio.
     - **Summarize Audios**: All audio messages should be as brief and concise as possible.
     - **Detailed Text**: You can provide more detailed responses in text messages.
     - If users need to reset any ongoing task or context, they should use the "-reset" command. This will cause you to not remember anything that was said previously to the command.
-    ${botConfig.imageCreationEnabled?'- You can create images. If a user requests an image, guide them to use the command “-image <description>”. For example, respond with, “To create an image, please use the command \'-image a dancing dog\'.”':''}
-    ${botConfig.imageCreationEnabled? '- Accuracy is key. If a command is misspelled, kindly notify the user of the mistake and suggest the correct command format. For instance, “It seems like there might be a typo in your command. Did you mean \'-image\' for generating images?”' : ''}
     ${prompt_info?`- Finally and the most important, The following is specific information for the people or group with whom you interact: ${prompt_info}`:``}`;
 }
 
