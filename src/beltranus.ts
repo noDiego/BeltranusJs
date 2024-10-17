@@ -156,7 +156,7 @@ export class Beltranus {
         const parts = chatResponseString.split(/\[Text\]|\[Image\]/).map(part => part.trim());
 
         const [text, image] = parts.slice(1);
-        return this.createImage(message, image, isCreator, text);
+        return this.createImage(message, image || text, isCreator, image ? text : undefined);
       } else if (chatResponseString.startsWith('[Audio]')) {
         chatResponseString = chatResponseString.replace('[Audio]','').trim();
         return this.speak(message, chatData, chatResponseString, chatCfg.voice_id as CVoices);
