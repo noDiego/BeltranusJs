@@ -151,9 +151,12 @@ export class Beltranus {
       if(!chatResponseString) return;
 
       // Evaluate if message must be Audio or Text
-      if (chatResponseString.startsWith('[Image]')) {
-        chatResponseString = chatResponseString.replace('[Image]','').trim();
-        return this.createImage(message, chatResponseString, isCreator);
+      if (chatResponseString.includes('[Image]')) {
+        // Divide el mensaje en partes usando los delimitadores
+        const parts = chatResponseString.split(/\[Text\]|\[Image\]/).map(part => part.trim());
+
+        const [text, image] = parts.slice(1);
+        return this.createImage(message, image, isCreator, text);
       } else if (chatResponseString.startsWith('[Audio]')) {
         chatResponseString = chatResponseString.replace('[Audio]','').trim();
         return this.speak(message, chatData, chatResponseString, chatCfg.voice_id as CVoices);
@@ -406,7 +409,7 @@ export class Beltranus {
    * Returns:
    * - A promise that either resolves when the image has been successfully sent, or rejects if an error occurs during the image generation or sending process.
    */
-  private async createImage(message: Message, content: string | undefined, isCreator: boolean) {
+  private async createImage(message: Message, content: string | undefined, isCreator: boolean, text?: string) {
     // Verify that content is provided for image generation, return if not.
     if (!content) return;
 
@@ -418,9 +421,12 @@ export class Beltranus {
       // Calls the ChatGPT service to generate an image based on the provided textual content.
       const imgUrl = await this.chatGpt.createImage(content) as string;
       const media = await MessageMedia.fromUrl(imgUrl);
+      const options = {
+        caption: text || 'Aquí está la imagen que generé basado en tu solicitud.'
+      };
 
       // Reply to the message with the generated image.
-      return await message.reply(media);
+      return await message.reply(media, undefined, options);
     } catch (e: any) {
       logger.error(`Error in createImage function: ${e.message}`);
       // In case of an error during image generation or sending the image, inform the user.
