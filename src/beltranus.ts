@@ -272,6 +272,7 @@ export class Beltranus {
 
     // Initialize an array of messages
     let messageList: AiMessage[] = [];
+    let processedMessages = 0;
 
     const promptText = chatCfg.buildprompt?
       CONFIG.buildPrompt(capitalizeString(chatCfg.prompt_name), chatCfg.limit, chatCfg.maximages, chatCfg.characterslimit, chatCfg.prompt_text) : chatCfg.prompt_text;
@@ -288,6 +289,8 @@ export class Beltranus {
 
     // Placeholder for promises for transcriptions
     let transcriptionPromises: { index: number, promise: Promise<string> }[] = [];
+
+    logger.info('Comenzando lectura de mensajes')
 
     for (const msg of messagesToProcess.reverse()) {
 
@@ -325,8 +328,12 @@ export class Beltranus {
       totalTokens += currentMessageTokens; // Acumular tokens.
 
       messageList.push({ role: role, name: name, content: content });
+      processedMessages++;
     }
 
+    logger.info('Lectura de mensajes OK');
+
+    logger.info('Comenzando transcripcion de audios');
     // Wait for all transcriptions to complete
     const transcriptions = await Promise.all(transcriptionPromises.map(t => t.promise));
     transcriptionPromises.forEach((transcriptionPromise, idx) => {
@@ -337,9 +344,13 @@ export class Beltranus {
       );
     });
 
+    logger.info('Transcripcion de audios OK');
+
     // If no new messages are present, return without action
     if (messageList.length == 0) return;
     messageList = messageList.reverse();
+
+    logger.info('Comenzando limitacion de imagenes');
 
     // Limit the number of processed images to only the last few, as defined in bot configuration (maxSentImages)
     let imageCount = 0;
@@ -351,8 +362,10 @@ export class Beltranus {
       }
     }
 
+    logger.info('Limitacion imagenes OK');
+
     // Send the message and return the text response
-    logger.debug(`[chatGPTReply] Sending Messages. Tokens Total: ${totalTokens}`);
+    logger.debug(`Sending Messages. Tokens Total: ${totalTokens}. Processed Messages: ${processedMessages}`);
     // Send the message and return the text response
     if (this.aiConfig.aiLanguage == AiLanguage.OPENAI) {
       const convertedMessageList: ChatCompletionMessageParam[] = this.convertIaMessagesLang(messageList, AiLanguage.OPENAI) as ChatCompletionMessageParam[];
