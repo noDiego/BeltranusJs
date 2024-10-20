@@ -65,7 +65,7 @@ const botConfig = {
   sendChatName: true,
   restrictedNumbers: (<string>process.env.RESTRICTED_NUMBERS).split(','),
   personalNumber: process.env.PERSONAL_NUMBER,
-  redisCacheTime: 259200
+  redisCacheTime: 172800
 };
 
 function buildPrompt(botName, maxMsgLimit, maxImagesLimit, charactersLimit, promptInfo) {
