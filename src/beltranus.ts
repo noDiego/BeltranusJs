@@ -382,7 +382,7 @@ export class Beltranus {
     // Send the message and return the text response
     if (this.aiConfig.aiLanguage == AiLanguage.OPENAI) {
       const convertedMessageList: ChatCompletionMessageParam[] = this.convertIaMessagesLang(messageList, AiLanguage.OPENAI) as ChatCompletionMessageParam[];
-      return await this.chatGpt.sendMessages(convertedMessageList, promptText, chatCfg.ai_model);
+      return await this.chatGpt.sendMessages(convertedMessageList, promptText, chatCfg.ia_model);
     } else if (this.aiConfig.aiLanguage == AiLanguage.ANTHROPIC) {
       const convertedMessageList: MessageParam[] = this.convertIaMessagesLang(messageList, AiLanguage.ANTHROPIC) as MessageParam[];
       return await this.claude.sendChat(convertedMessageList, promptText, isPersonal? ClaudeModel.OPUS: this.aiConfig.model);

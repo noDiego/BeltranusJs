@@ -17,21 +17,24 @@ export class ChatGTP {
     this.gptModel = <string>process.env.GPT_MODEL;
   }
 
-  async sendMessages(messageList: ChatCompletionMessageParam[], systemPrompt: string, gptModel: string) {
+  async sendMessages(messageList: ChatCompletionMessageParam[], systemPrompt: string, gptModel: string, maxTokens?: number) {
 
-    logger.info(`[ChatGTP->sendMessages] Enviando ${messageList.length} mensajes`);
+    const model = gptModel || this.gptModel;
+    const isO1 = model.startsWith('o1');
+
+    logger.info(`[ChatGTP->sendMessages] Enviando ${messageList.length} mensajes (Model:${model})`);
 
     logger.debug('[ChatGTP->sendMessages] Message List (Last 3 Elements):');
     logger.debug(getLastElementsArray(messageList, 3));
 
-    messageList.unshift({role: 'system', content:systemPrompt});
+    messageList.unshift({role: isO1?'user':'system', content:systemPrompt});
 
     const completion = await this.openai.chat.completions.create({
-      model: gptModel || this.gptModel,
+      model: model,
       messages: messageList,
-      max_tokens: 1024,
+      [isO1?'max_completion_tokens':'max_tokens']: maxTokens || 2048,
       top_p: 1,
-      frequency_penalty: 0.5,
+      frequency_penalty: isO1 ? 0:0.5,
       presence_penalty: 0
     });
 

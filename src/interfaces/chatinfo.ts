@@ -12,7 +12,7 @@ export interface ChatCfg {
   maxtokens: number;
   maximages: number;
   voice_id: string;
-  ai_model: string;
+  ia_model: string;
 }
 
 export enum GPTRol{
