@@ -49,6 +49,7 @@ export class Beltranus {
   };
   private imageTokens = 255; //Tokens Image 512x512
   private cache: NodeCache;
+  private groupProcessingStatus: {[key: string]: boolean} = {}; //Para validar que el chat en un grupo no este "ocupado" respondiendo otro mensaje
 
   public constructor(client) {
     this.client = client;
@@ -108,14 +109,14 @@ export class Beltranus {
    * - A promise that resolves to a boolean value indicating whether a response was successfully sent back to the user or not.
    */
   public async readMessage(message: Message) {
-    try {
 
-      // Extract the data input (extracts command e.g., "-a", and the message)
-      const chatData: Chat = await message.getChat();
+    const chatData: Chat = await message.getChat();
+
+    try {
       const contactData: Contact = await message.getContact();
       const { command, commandMessage } = parseCommand(message.body);
-      const isCreator = contactData.number == CONFIG.botConfig.personalNumber;
-      const isCreatorPersonalChat = isCreator && !chatData.isGroup;
+      const isSuperUser = contactData.number == CONFIG.botConfig.personalNumber;
+      const isSuperUserChat = isSuperUser && !chatData.isGroup;
 
       //Numeros restringidos
       if(CONFIG.botConfig.restrictedNumbers.includes(contactData.number)){
@@ -129,7 +130,7 @@ export class Beltranus {
       if(!this.allowedTypes.includes(message.type) || message.type == MessageTypes.AUDIO) return false;
 
       // Se evalua si corresponde a algun bot
-      let chatCfg: ChatCfg = await this.getChatConfig(message, chatData, isCreatorPersonalChat) as ChatCfg;
+      let chatCfg: ChatCfg = await this.getChatConfig(message, chatData, isSuperUserChat) as ChatCfg;
       if(chatCfg == null && !command) return false;
 
       // Logs the message
@@ -138,14 +139,22 @@ export class Beltranus {
       // Evaluates if it should go to the command flow
       if(!!command){
         await chatData.sendStateTyping();
-        await this.commandSelect(message, chatData, chatCfg, isCreator);
+        await this.commandSelect(message, chatData, chatCfg, isSuperUser);
         await chatData.clearState();
         return true;
       }
 
+      // Verifica si ya hay un proceso en el grupo
+      while (this.groupProcessingStatus[chatData.id._serialized]) {
+        await new Promise(resolve => setTimeout(resolve, 3000)); // Espera 3 segundos
+      }
+
+      // Marca el grupo como en proceso para evitar que se procesen dos mensajes en simultaneo en el mismo grupo
+      this.groupProcessingStatus[chatData.id._serialized] = true;
+
       // Sends message to ChatGPT
       chatData.sendStateTyping();
-      let chatResponseString = await this.processMessage(chatData, chatCfg, isCreatorPersonalChat);
+      let chatResponseString = await this.processMessage(chatData, chatCfg, isSuperUserChat);
       chatData.clearState();
 
       if(!chatResponseString) return;
@@ -156,18 +165,20 @@ export class Beltranus {
         const parts = chatResponseString.split(/\[Text\]|\[Image\]/).map(part => part.trim());
 
         const [text, image] = parts.slice(1);
-        return this.createImage(message, image || text, isCreator, image ? text : undefined);
+        await this.createImage(message, image || text, isSuperUser, image ? text : undefined);
       } else if (chatResponseString.startsWith('[Audio]')) {
         chatResponseString = chatResponseString.replace('[Audio]','').trim();
-        return this.speak(message, chatData, chatResponseString, chatCfg.voice_id as CVoices);
+        await this.speak(message, chatData, chatResponseString, chatCfg.voice_id as CVoices);
       } else {
         chatResponseString = chatResponseString.replace('[Text]','').trim();
-        return this.returnResponse(message, chatResponseString, chatData.isGroup);
+        await this.returnResponse(message, chatResponseString, chatData.isGroup);
       }
-
+      return true;
     } catch (e: any) {
       logger.error(e.message);
       return message.reply('Tuve un Error con tu mensaje 😔. Intenta usar "-reset" para reiniciar la conversación.');
+    } finally {
+      this.groupProcessingStatus[chatData.id._serialized] = false;
     }
   }
 
@@ -274,8 +285,10 @@ export class Beltranus {
     let messageList: AiMessage[] = [];
     let processedMessages = 0;
 
-    const promptText = chatCfg.buildprompt?
+    let promptText = chatCfg.buildprompt?
       CONFIG.buildPrompt(capitalizeString(chatCfg.prompt_name), chatCfg.limit, chatCfg.maximages, chatCfg.characterslimit, chatCfg.prompt_text) : chatCfg.prompt_text;
+    promptText = chatCfg.prompt_name == 'profesor'? CONFIG.buildO1Prompt(chatCfg.limit, chatCfg.prompt_text):promptText;
+
     let totalTokens = await contarTokens(promptText); // Inicializa total de tokens con Prompt para no superar el maximo
 
     // Retrieve the last 'limit' number of messages to send them in order
@@ -365,7 +378,7 @@ export class Beltranus {
     logger.info('Limitacion imagenes OK');
 
     // Send the message and return the text response
-    logger.debug(`Sending Messages. Tokens Total: ${totalTokens}. Processed Messages: ${processedMessages}`);
+    logger.debug(`Sending Messages to "${chatCfg.prompt_name}" profile. Tokens Total: ${totalTokens}. Processed Messages: ${processedMessages}`);
     // Send the message and return the text response
     if (this.aiConfig.aiLanguage == AiLanguage.OPENAI) {
       const convertedMessageList: ChatCompletionMessageParam[] = this.convertIaMessagesLang(messageList, AiLanguage.OPENAI) as ChatCompletionMessageParam[];

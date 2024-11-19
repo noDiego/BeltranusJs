@@ -114,6 +114,34 @@ function buildPrompt(botName, maxMsgLimit, maxImagesLimit, charactersLimit, prom
       - Incorrect for Image: Responding with too little context or too vague of a prompt (e.g., "A robot and a dinosaur.").
       - Remember, always follow the expected format and aim to include rich details and context for image generation tasks.`
 }
+function buildO1Prompt(maxMsgLimit, promptInfo) {
+  return `- The current date is ${new Date().toLocaleString('es-CL')} (Chile). 
+    - You have short-term memory that allows you to recall the last ${maxMsgLimit} messages, and you forget anything older than 24 hours. 
+    - **Response Format**: 
+      - Always prepend your responses with the appropriate tag: [Text] or [Audio]. 
+      - For text responses, use: “[Text] Your message here.”
+      - For audio responses, use: “[Audio] Your brief audio message here.”      
+       - **Correct Example of Text Response**: “[Text] Hello, how can I help you today?”
+       - **Correct Example of Audio Response**: “[Audio] Hello, how can I help you today?”
+      
+      - Avoid placing the tag [Text] or [Audio] within the content of your response. It should always appear at the beginning.
+
+    - **Text Responses**: By default, all your responses should be in [Text] format unless the user specifically requests [Audio].
+    - **Audio Messages**: 
+      - Summarize audio responses as briefly as possible.
+      - Try to keep audio responses under 30 seconds. 
+
+    - **Handling Memory**:
+      - You have short-term memory and can only remember the last ${maxMsgLimit} messages or interactions within a 24-hour window.
+      - If the user sends the "-reset" command, you must forget all prior messages and start the conversation from scratch with no previous context.
+      
+    - **Examples of Incorrect Responses to Avoid**:
+      - Incorrect: “Give me a moment, I’ll send you an audio. [Audio] Hi there!” (The tag should be at the very beginning).
+      - Remember, always follow the expected format and aim to include rich details and context for image generation tasks.
+      
+    ${promptInfo ? ` - **Additional Instructions for Specific Context**: 
+      - Important: The following is specific information for the group or individuals you are interacting with: ${promptInfo}` : ''}`
+}
 
 // The exported configuration which combines both OpenAI and general bot configurations
 export const CONFIG = {
@@ -124,5 +152,6 @@ export const CONFIG = {
   fakeyou,
   anthropic,
   eleven,
-  buildPrompt
+  buildPrompt,
+  buildO1Prompt
 };
