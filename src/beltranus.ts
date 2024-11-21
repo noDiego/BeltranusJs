@@ -382,7 +382,7 @@ export class Beltranus {
     // Send the message and return the text response
     if (this.aiConfig.aiLanguage == AiLanguage.OPENAI) {
       const convertedMessageList: ChatCompletionMessageParam[] = this.convertIaMessagesLang(messageList, AiLanguage.OPENAI) as ChatCompletionMessageParam[];
-      return await this.chatGpt.sendMessages(convertedMessageList, promptText, chatCfg.ia_model);
+      return await this.chatGpt.sendMessages(convertedMessageList, promptText, chatCfg.ia_model, chatCfg.maxtokens);
     } else if (this.aiConfig.aiLanguage == AiLanguage.ANTHROPIC) {
       const convertedMessageList: MessageParam[] = this.convertIaMessagesLang(messageList, AiLanguage.ANTHROPIC) as MessageParam[];
       return await this.claude.sendChat(convertedMessageList, promptText, isPersonal? ClaudeModel.OPUS: this.aiConfig.model);
@@ -441,7 +441,7 @@ export class Beltranus {
 
 
     if(!isCreator && !CONFIG.botConfig.imageCreationEnabled)
-      return message.reply('Lo siento, pero solo mi gran creador Diego puede crear imagenes. 👺');
+      return message.reply('Lo siento, pero solo Diego puede pedirme que haga una imagen.');
 
     try {
       // Calls the ChatGPT service to generate an image based on the provided textual content.

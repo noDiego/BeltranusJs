@@ -29,14 +29,21 @@ export class ChatGTP {
 
     messageList.unshift({role: isO1?'user':'system', content:systemPrompt});
 
-    const completion = await this.openai.chat.completions.create({
+    const params = isO1?{
+        model: model,
+        messages: messageList,
+        frequency_penalty: 0.5,
+      }
+      :{
       model: model,
       messages: messageList,
-      [isO1?'max_completion_tokens':'max_tokens']: maxTokens || 2048,
+      max_tokens: maxTokens || 2048,
       top_p: 1,
-      frequency_penalty: isO1 ? 0:0.5,
+      frequency_penalty: 0.5,
       presence_penalty: 0
-    });
+    }
+
+    const completion = await this.openai.chat.completions.create(params);
 
     logger.debug('[ChatGTP->sendMessages] Completion Response:');
     logger.debug(completion.choices[0]);
