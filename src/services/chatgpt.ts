@@ -31,8 +31,7 @@ export class ChatGTP {
 
     const params = isO1?{
         model: model,
-        messages: messageList,
-        frequency_penalty: 0.5,
+        messages: messageList
       }
       :{
       model: model,
