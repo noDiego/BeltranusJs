@@ -3,7 +3,7 @@ import OpenAI, { toFile } from 'openai';
 import { ChatCompletionMessageParam } from 'openai/src/resources/chat/completions';
 import { GPTRol } from '../interfaces/chatinfo';
 import { CONFIG } from '../config';
-import { getLastElementsArray } from '../utils';
+import { logGPTMessages, sleep } from '../utils';
 
 export class ChatGTP {
 
@@ -25,9 +25,9 @@ export class ChatGTP {
     logger.info(`[ChatGTP->sendMessages] Enviando ${messageList.length} mensajes (Model:${model})`);
 
     logger.debug('[ChatGTP->sendMessages] Message List (Last 3 Elements):');
-    logger.debug(getLastElementsArray(messageList, 3));
+    logGPTMessages(messageList);
 
-    messageList.unshift({role: isO1?'user':'system', content:systemPrompt});
+    messageList.unshift({role: isO1?'user':'system', content:[{type: 'text', text: systemPrompt}]});
 
     const params = isO1?{
         model: model,
@@ -42,15 +42,28 @@ export class ChatGTP {
       presence_penalty: 0
     }
 
-    const completion = await this.openai.chat.completions.create(params);
+    let retryCount:number = 0;
+    let completion;
+    do {
+      try {
+        logger.debug('[ChatGPT->sendMessages] Enviando a OpenAI. Intento : '+(retryCount+1));
+
+        if(retryCount == 3) params.messages = this.sanitizeMessageList(params.messages, 'keepLast');
+        if(retryCount == 4) params.messages = this.sanitizeMessageList(params.messages, 'removeAll');
+        completion = await this.openai.chat.completions.create(params);
+      }catch (e:any){
+        logger.debug('[ChatGPT->sendMessages] Ocurrio un error: '+e.message);
+        retryCount++;
+        if(retryCount>4) throw e;
+        await sleep(700);
+      }
+    }while (!completion)
 
     logger.debug('[ChatGTP->sendMessages] Completion Response:');
     logger.debug(completion.choices[0]);
     logger.debug('Totals Tokens used:'+ completion.usage?.total_tokens);
 
-    const messageResult = completion.choices[0].message;
-
-    return messageResult?.content || '';
+    return completion.choices[0].message?.content || '';
   }
 
   async evaluateMessageIntent(message) {
@@ -155,5 +168,70 @@ export class ChatGTP {
       logger.error(e.message);
       throw e;
     }
+  }
+
+  /**
+   * Sanitiza la lista de mensajes, eliminando imágenes según el modo especificado.
+   *
+   * - 'keepLast': Mantiene solo la última imagen y reemplaza las anteriores con "[Imagen no procesada]".
+   * - 'removeAll': Reemplaza todas las imágenes con "[Imagen no procesada]".
+   *
+   * @param messageListOriginal - La lista de mensajes a procesar.
+   * @param mode - Modo de sanitización: 'keepLast' o 'removeAll'.
+   * @returns La lista de mensajes procesada.
+   */
+  private sanitizeMessageList(
+    messageListOriginal: ChatCompletionMessageParam[],
+    mode: 'keepLast' | 'removeAll' = 'keepLast'
+  ): ChatCompletionMessageParam[] {
+
+    const messageList = structuredClone(messageListOriginal);
+
+    // Encuentra los índices de todos los mensajes que contienen imágenes
+    const imageMessageIndices: number[] = [];
+    for (const message of messageList) {
+      const index = messageList.indexOf(message);
+      if (
+        (message.content as Array<any>).some(
+          contentPart =>
+            contentPart.type === 'image_url' ||
+            contentPart.type === 'image'
+        )
+      ) {
+        imageMessageIndices.push(index);
+      }
+    }
+
+    if (mode === 'removeAll') {
+      // Reemplazar todas las imágenes con "[Imagen no procesada]"
+      for (const index of imageMessageIndices) {
+        messageList[index].content = (messageList[index].content as Array<any>).map(contentPart => {
+          if (contentPart.type === 'image_url' || contentPart.type === 'image') {
+            return { type: 'text', value: '[Imagen no procesada]' };
+          }
+          return contentPart;
+        });
+      }
+    } else if (mode === 'keepLast') {
+      // Si no hay imágenes, retorna la lista original
+      if (imageMessageIndices.length === 0) return messageList;
+
+      // Determina el índice de la última imagen
+      const lastImageIndex = imageMessageIndices[imageMessageIndices.length - 1];
+
+      // Recorre los mensajes que contienen imágenes y reemplaza las que no son la última
+      for (const index of imageMessageIndices) {
+        if (index !== lastImageIndex) {
+          messageList[index].content = (messageList[index].content as Array<any>).map(contentPart => {
+            if (contentPart.type === 'image_url' || contentPart.type === 'image') {
+              return { type: 'text', value: '[Imagen no procesada]' };
+            }
+            return contentPart;
+          });
+        }
+      }
+    }
+
+    return messageList;
   }
 }

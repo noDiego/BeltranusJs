@@ -6,6 +6,9 @@ import { PassThrough, Readable } from 'stream';
 import axios from 'axios';
 import getStream from 'get-stream';
 import { Tiktoken } from 'tiktoken/lite';
+import { ChatCompletionMessageParam } from 'openai/src/resources/chat/completions';
+import OpenAI from 'openai';
+import ChatCompletionContentPart = OpenAI.ChatCompletionContentPart;
 
 
 export function getMsgData(message: Message): {command: string, content: string}{
@@ -140,10 +143,25 @@ export async function contarTokens(texto: string) {
   return cantidadTokens;
 }
 
-export function getLastElementsArray(array, qty) {
-  if (array.length <= qty) return array;
+export function getLastElementsArray<T>(msgs: T[], qty): T[] {
+  const array = structuredClone(msgs);
+  if (array.length <= qty) return array.slice();
   const inicio = array.length - qty;
   return array.slice(inicio);
+}
+
+export function cleanImagesLog(array: ChatCompletionMessageParam[]){
+  array.forEach((e:any) => {
+    e.content!.forEach((c:ChatCompletionContentPart) =>{
+      if(c.type == 'image_url') c.image_url.url = '<base64img>';
+    })
+  });
+  return array;
+}
+
+export function logGPTMessages(messages: ChatCompletionMessageParam[]){
+  const msgs = getLastElementsArray(messages, 3);
+  logger.debug(cleanImagesLog(msgs));
 }
 
  /**
@@ -177,4 +195,18 @@ export async function convertToOgg(buffer) {
       .toFormat('ogg')
       .pipe(outputStream); // Pipe the output to the PassThrough stream
   });
+}
+
+export async function retry<T>(
+  fn: () => Promise<T>,
+  retries = 3,
+  delay = 1000
+): Promise<T> {
+  try {
+    return await fn();
+  } catch (error) {
+    if (retries === 0) throw error;
+    await new Promise(res => setTimeout(res, delay));
+    return retry(fn, retries - 1, delay * 2);
+  }
 }
