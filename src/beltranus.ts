@@ -320,7 +320,7 @@ export class Beltranus {
       // Check if the message includes media
       const media = isImage || isAudio? await msg.downloadMedia() : null;
 
-      const role = msg.fromMe ? AiRole.ASSISTANT : AiRole.USER;
+      const role = (!msg.fromMe || isImage)? AiRole.USER : AiRole.ASSISTANT;
       const name = msg.fromMe ? capitalizeString(chatCfg.prompt_name) : (await getContactName(msg));
 
       const content: Array<AiContent> = [];
