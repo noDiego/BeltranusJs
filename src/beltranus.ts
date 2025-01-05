@@ -306,42 +306,48 @@ export class Beltranus {
     logger.info('Comenzando lectura de mensajes')
 
     for (const msg of messagesToProcess.reverse()) {
+      try {
+        // Validate if the message was written less than 24 (or maxHoursLimit) hours ago; if older, it's not considered
+        const msgDate = new Date(msg.timestamp * 1000);
+        const timeDifferenceHours = (actualDate.getTime() - msgDate.getTime()) / (1000 * 60 * 60);
+        const isImage = msg.type == MessageTypes.STICKER || msg.type === MessageTypes.IMAGE;
+        const isAudio = msg.type == MessageTypes.AUDIO || msg.type === MessageTypes.VOICE;
 
-      // Validate if the message was written less than 24 (or maxHoursLimit) hours ago; if older, it's not considered
-      const msgDate = new Date(msg.timestamp * 1000);
-      const timeDifferenceHours = (actualDate.getTime() - msgDate.getTime()) / (1000 * 60 * 60);
-      const isImage = msg.type == MessageTypes.STICKER || msg.type === MessageTypes.IMAGE;
-      const isAudio = msg.type == MessageTypes.AUDIO || msg.type === MessageTypes.VOICE;
+        if (timeDifferenceHours > chatCfg.hourslimit) continue;
 
-      if (timeDifferenceHours > chatCfg.hourslimit) continue;
+        if (!this.allowedTypes.includes(msg.type) && !isAudio) continue;
 
-      if (!this.allowedTypes.includes(msg.type) && !isAudio) continue;
+        // Check if the message includes media
+        const media = isImage || isAudio ? await msg.downloadMedia() : null;
 
-      // Check if the message includes media
-      const media = isImage || isAudio? await msg.downloadMedia() : null;
+        const role = (!msg.fromMe || isImage) ? AiRole.USER : AiRole.ASSISTANT;
+        const name = msg.fromMe ? capitalizeString(chatCfg.prompt_name) : (await getContactName(msg));
 
-      const role = (!msg.fromMe || isImage)? AiRole.USER : AiRole.ASSISTANT;
-      const name = msg.fromMe ? capitalizeString(chatCfg.prompt_name) : (await getContactName(msg));
+        const content: Array<AiContent> = [];
+        if (isImage && media) content.push({type: 'image', value: media.data, media_type: media.mimetype});
+        if (isAudio && media) {
+          const transcriptionPromise = this.transcribeVoice(media, msg);
+          transcriptionPromises.push({index: messageList.length, promise: transcriptionPromise});
+          content.push({type: 'text', value: '<Transcribiendo mensaje de voz...>'});
+        }
+        if (msg.body) content.push({type: 'text', value: '[Text]' + msg.body});
 
-      const content: Array<AiContent> = [];
-      if (isImage && media) content.push({ type: 'image', value: media.data, media_type: media.mimetype });
-      if (isAudio && media) {
-        const transcriptionPromise = this.transcribeVoice(media, msg);
-        transcriptionPromises.push({ index: messageList.length, promise: transcriptionPromise });
-        content.push({ type: 'text', value: '<Transcribiendo mensaje de voz...>' });
+        // Estimar el conteo de tokens para el mensaje actual
+        let currentMessageTokens;
+        if (isImage && media) currentMessageTokens = this.imageTokens; // Usa la función auxiliar contarTokens para estimar la cantidad de tokens.
+        else if (!isAudio) currentMessageTokens = await contarTokens(content[0].value as string)
+
+        if ((totalTokens + currentMessageTokens) > chatCfg.maxtokens) break; // Si agregar este mensaje supera el límite de tokens, detener el bucle.
+        totalTokens += currentMessageTokens; // Acumular tokens.
+
+        messageList.push({role: role, name: name, content: content});
+        processedMessages++;
+      }catch (e:any){
+        logger.error(`Error en Lectura de Mensage - msg.type:${msg.type}; msg.body${msg.body}`);
+        const contactInfo = await msg.getContact();
+        logger.error(`contactInfo.name:${contactInfo.name}`);
+        logger.error(`Error: ${e.message}`);
       }
-      if (msg.body) content.push({ type: 'text', value: '[Text]' + msg.body });
-
-      // Estimar el conteo de tokens para el mensaje actual
-      let currentMessageTokens;
-      if(isImage && media) currentMessageTokens = this.imageTokens; // Usa la función auxiliar contarTokens para estimar la cantidad de tokens.
-      else if(!isAudio) currentMessageTokens = await contarTokens(content[0].value as string)
-
-      if ((totalTokens + currentMessageTokens) > chatCfg.maxtokens) break; // Si agregar este mensaje supera el límite de tokens, detener el bucle.
-      totalTokens += currentMessageTokens; // Acumular tokens.
-
-      messageList.push({ role: role, name: name, content: content });
-      processedMessages++;
     }
 
     logger.info('Lectura de mensajes OK');

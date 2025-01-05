@@ -27,6 +27,7 @@ export class ChatGTP {
     logger.debug('[ChatGTP->sendMessages] Message List (Last 3 Elements):');
     logGPTMessages(messageList);
 
+
     messageList.unshift({role: isO1?'user':'system', content:[{type: 'text', text: systemPrompt}]});
 
     const params = isO1?{
