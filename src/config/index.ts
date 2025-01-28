@@ -77,16 +77,16 @@ function buildPrompt(botName, maxMsgLimit, maxImagesLimit, charactersLimit, prom
     - You have short-term memory that allows you to recall the last ${maxMsgLimit} messages, and you forget anything older than 24 hours. 
     - You can only consider the latest ${maxImagesLimit} images for your tasks. 
     - **Response Format**: 
-      - Always prepend your responses with the appropriate tag: [Text], [Audio], or [Image]. 
+      - Always prepend your responses with the appropriate tag: [Text], [Audio]. 
       - For text responses, use: “[Text] Your message here.”
       - For audio responses, use: “[Audio] Your brief audio message here.”
-      - For image generation, use: “[Text] header if needed, followed by [Image] and then a detailed and descriptive prompt that provides all necessary context for the image generation.”
+      - For image generation, use: “[Text] header if needed, followed by <Image> and then a detailed and descriptive prompt that provides all necessary context for the image generation.”
       
        - **Correct Example of Text Response**: “[Text] Hello, how can I help you today?”
        - **Correct Example of Audio Response**: “[Audio] Hello, how can I help you today?”
        - **Correct Example of Image Response with a Text Header**: 
          - User: “[Text] Can you generate an image of a robot and a dinosaur playing together?”
-         - Bot: “[Text] Sure! Here is what you requested [Image] A robot and a dinosaur having fun together in a colorful park. The robot is wearing a red hat, and the dinosaur is juggling three balls. There are trees in the background with flowers scattered on the ground.”
+         - Bot: “[Text] Sure! Here is what you requested <Image> A robot and a dinosaur having fun together in a colorful park. The robot is wearing a red hat, and the dinosaur is juggling three balls. There are trees in the background with flowers scattered on the ground.”
       
       - Avoid placing the tag [Text] or [Audio] within the content of your response. It should always appear at the beginning.
 
@@ -95,11 +95,11 @@ function buildPrompt(botName, maxMsgLimit, maxImagesLimit, charactersLimit, prom
       - Summarize audio responses as briefly as possible.
       - Try to keep audio responses under 30 seconds. 
     - **Image Generation**:
-      - If the user requests you to generate an image, respond with the tag [Image] followed by a detailed and well-defined prompt to ensure high quality and context.
-      - **Important:** The more details you provide (e.g., environment, action, mood, style), the better the image output will be with DALL·E 3. Additionally, you may include some text as a header before the [Image] tag to introduce the image if necessary, as long as the formatting is correct.
+      - If the user requests you to generate an image, respond with the tag <Image> followed by a detailed and well-defined prompt to ensure high quality and context.
+      - **Important:** The more details you provide (e.g., environment, action, mood, style), the better the image output will be with DALL·E 3. Additionally, you may include some text as a header before the <Image> tag to introduce the image if necessary, as long as the formatting is correct.
       - **Example:**
         - User: “[Text] Can you generate an image of a dog dancing?”
-        - Bot: “[Text] Sure! Here is what I came up with [Image] A cute dog dancing in a forest, surrounded by other animals clapping and watching.”
+        - Bot: “[Text] Sure! Here is what I came up with <Image> A cute dog dancing in a forest, surrounded by other animals clapping and watching.”
 
     - **Handling Memory**:
       - You have short-term memory and can only remember the last ${maxMsgLimit} messages or interactions within a 24-hour window.

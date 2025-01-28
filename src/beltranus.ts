@@ -3,7 +3,6 @@ import { Chat, Contact, Message, MessageMedia, MessageSendOptions, MessageTypes 
 import {
   bufferToStream,
   capitalizeString,
-  contarTokens,
   convertStreamToMessageMedia,
   convertWavToMp3,
   getCloudFile,
@@ -160,9 +159,9 @@ export class Beltranus {
       if(!chatResponseString) return;
 
       // Evaluate if message must be Audio or Text
-      if (chatResponseString.includes('[Image]')) {
+      if (chatResponseString.includes('<Image>')) {
         // Divide el mensaje en partes usando los delimitadores
-        const parts = chatResponseString.split(/\[Text\]|\[Image\]/).map(part => part.trim());
+        const parts = chatResponseString.split(/\[Text]|<Image>/).map(part => part.trim());
 
         const [text, image] = parts.slice(1);
         await this.createImage(message, image || text, isSuperUser, image ? text : undefined);
@@ -289,8 +288,6 @@ export class Beltranus {
       CONFIG.buildPrompt(capitalizeString(chatCfg.prompt_name), chatCfg.limit, chatCfg.maximages, chatCfg.characterslimit, chatCfg.prompt_text) : chatCfg.prompt_text;
     promptText = chatCfg.prompt_name == 'profesor'? CONFIG.buildO1Prompt(chatCfg.limit, chatCfg.prompt_text):promptText;
 
-    let totalTokens = await contarTokens(promptText); // Inicializa total de tokens con Prompt para no superar el maximo
-
     // Retrieve the last 'limit' number of messages to send them in order
     const fetchedMessages = await chatData.fetchMessages({ limit: 300 });
     // Check for "-reset" command in chat history to potentially restart context
@@ -302,6 +299,7 @@ export class Beltranus {
 
     // Placeholder for promises for transcriptions
     let transcriptionPromises: { index: number, promise: Promise<string> }[] = [];
+    let imageCount: number = 0;
 
     logger.info('Comenzando lectura de mensajes')
 
@@ -312,44 +310,40 @@ export class Beltranus {
         const timeDifferenceHours = (actualDate.getTime() - msgDate.getTime()) / (1000 * 60 * 60);
         const isImage = msg.type == MessageTypes.STICKER || msg.type === MessageTypes.IMAGE;
         const isAudio = msg.type == MessageTypes.AUDIO || msg.type === MessageTypes.VOICE;
+        const isOther = !isImage && !isAudio && msg.type != 'chat';
+        let media;
 
         if (timeDifferenceHours > chatCfg.hourslimit) continue;
 
-        if (!this.allowedTypes.includes(msg.type) && !isAudio) continue;
-
-        // Check if the message includes media
-        const media = isImage || isAudio ? await msg.downloadMedia() : null;
+        // Limit the number of processed images to only the last few
+        if ((isImage && imageCount < chatCfg.maximages) || isAudio) {
+          media = await msg.downloadMedia();
+          if(isImage) imageCount++;
+        }
 
         const role = (!msg.fromMe || isImage) ? AiRole.USER : AiRole.ASSISTANT;
         const name = msg.fromMe ? capitalizeString(chatCfg.prompt_name) : (await getContactName(msg));
 
         const content: Array<AiContent> = [];
+        if (isOther) content.push({type: 'text', value: `<Tipo de mensaje no procesable: {msg.type:"${msg.type}"${msg.body?', msg.body:"'+msg.body+'"':''}}>`});
         if (isImage && media) content.push({type: 'image', value: media.data, media_type: media.mimetype});
+        if (isImage && !media) content.push({type: 'text', value: '<Imagen no procesada>'});
         if (isAudio && media) {
           const transcriptionPromise = this.transcribeVoice(media, msg);
           transcriptionPromises.push({index: messageList.length, promise: transcriptionPromise});
           content.push({type: 'text', value: '<Transcribiendo mensaje de voz...>'});
         }
-        if (msg.body) content.push({type: 'text', value: '[Text]' + msg.body});
-
-        // Estimar el conteo de tokens para el mensaje actual
-        let currentMessageTokens;
-        if (isImage && media) currentMessageTokens = this.imageTokens; // Usa la función auxiliar contarTokens para estimar la cantidad de tokens.
-        else if (!isAudio) currentMessageTokens = await contarTokens(content[0].value as string)
-
-        if ((totalTokens + currentMessageTokens) > chatCfg.maxtokens) break; // Si agregar este mensaje supera el límite de tokens, detener el bucle.
-        totalTokens += currentMessageTokens; // Acumular tokens.
+        if (msg.body && !isOther) content.push({type: 'text', value: '[Text]' + msg.body});
 
         messageList.push({role: role, name: name, content: content});
         processedMessages++;
       }catch (e:any){
-        logger.error(`Error en Lectura de Mensage - msg.type:${msg.type}; msg.body${msg.body}`);
+        logger.error(`Error en Lectura de Mensage - msg.type:${msg.type}; msg.body:${msg.body}`);
         const contactInfo = await msg.getContact();
         logger.error(`contactInfo.name:${contactInfo.name}`);
         logger.error(`Error: ${e.message}`);
       }
     }
-
     logger.info('Lectura de mensajes OK');
 
     logger.info('Comenzando transcripcion de audios');
@@ -369,22 +363,8 @@ export class Beltranus {
     if (messageList.length == 0) return;
     messageList = messageList.reverse();
 
-    logger.info('Comenzando limitacion de imagenes');
-
-    // Limit the number of processed images to only the last few, as defined in bot configuration (maxSentImages)
-    let imageCount = 0;
-    for (let i = messageList.length - 1; i >= 0; i--) {
-      const haveImg = messageList[i].content.find(c => c.type == 'image');
-      if (haveImg) {
-        imageCount++;
-        if (imageCount > chatCfg.maximages) messageList.splice(i, 1);
-      }
-    }
-
-    logger.info('Limitacion imagenes OK');
-
     // Send the message and return the text response
-    logger.debug(`Sending Messages to "${chatCfg.prompt_name}" profile. Tokens Total: ${totalTokens}. Processed Messages: ${processedMessages}`);
+    logger.debug(`Sending Messages to "${chatCfg.prompt_name}" profile. Processed Messages: ${processedMessages}`);
     // Send the message and return the text response
     if (this.aiConfig.aiLanguage == AiLanguage.OPENAI) {
       const convertedMessageList: ChatCompletionMessageParam[] = this.convertIaMessagesLang(messageList, AiLanguage.OPENAI) as ChatCompletionMessageParam[];

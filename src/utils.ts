@@ -121,28 +121,6 @@ export function capitalizeString(str) {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-
-export async function contarTokens(texto: string) {
-  const cl100k_base = require("tiktoken/encoders/cl100k_base.json");
-  // Crear una nueva instancia de Tiktoken con la configuración del modelo
-  const encoding = new Tiktoken(
-    cl100k_base.bpe_ranks,
-    cl100k_base.special_tokens,
-    cl100k_base.pat_str
-  );
-
-  // Codificar el texto de entrada para obtener los tokens
-  const tokens = encoding.encode(texto);
-
-  // La longitud del arreglo de tokens representa la cantidad de tokens
-  const cantidadTokens = tokens.length;
-
-  // Libera memoria
-  encoding.free();
-
-  return cantidadTokens;
-}
-
 export function getLastElementsArray<T>(msgs: T[], qty): T[] {
   const array = structuredClone(msgs);
   if (array.length <= qty) return array.slice();
