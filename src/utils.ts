@@ -188,3 +188,9 @@ export async function retry<T>(
     return retry(fn, retries - 1, delay * 2);
   }
 }
+
+export function getUnsupportedMessage(msg: Message){
+  const body = msg.body?`, body:"${msg.body}"`:``;
+  const type = `type:"${msg.type}"`;
+  return `<Unsupported message: {${type}${body}}>`
+}

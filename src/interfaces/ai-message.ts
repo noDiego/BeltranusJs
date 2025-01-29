@@ -17,5 +17,6 @@ export interface AiContent {
 
 export enum AiLanguage {
   OPENAI='OPENAI',
-  ANTHROPIC='ANTHROPIC'
+  ANTHROPIC='ANTHROPIC',
+  DEEPSEEK='DEEPSEEK',
 }

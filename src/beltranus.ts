@@ -7,7 +7,7 @@ import {
   convertWavToMp3,
   getCloudFile,
   getContactName,
-  getMsgData,
+  getMsgData, getUnsupportedMessage,
   includePrefix,
   logMessage,
   parseCommand
@@ -307,32 +307,32 @@ export class Beltranus {
       try {
         // Validate if the message was written less than 24 (or maxHoursLimit) hours ago; if older, it's not considered
         const msgDate = new Date(msg.timestamp * 1000);
-        const timeDifferenceHours = (actualDate.getTime() - msgDate.getTime()) / (1000 * 60 * 60);
+        if ((actualDate.getTime() - msgDate.getTime()) / (1000 * 60 * 60) > chatCfg.hourslimit) break;
+
         const isImage = msg.type == MessageTypes.STICKER || msg.type === MessageTypes.IMAGE;
         const isAudio = msg.type == MessageTypes.AUDIO || msg.type === MessageTypes.VOICE;
         const isOther = !isImage && !isAudio && msg.type != 'chat';
-        let media;
 
-        if (timeDifferenceHours > chatCfg.hourslimit) continue;
+        // Checks if a message already exists in the cache
+        const cachedMessage = this.getCachedMessage(msg);
 
         // Limit the number of processed images to only the last few
-        if ((isImage && imageCount < chatCfg.maximages) || isAudio) {
-          media = await msg.downloadMedia();
-          if(isImage) imageCount++;
-        }
+        const media = (isImage && imageCount < chatCfg.maximages) || (isAudio && !cachedMessage) ?
+          await msg.downloadMedia() : null;
+        if (media && isImage) imageCount++;
 
         const role = (!msg.fromMe || isImage) ? AiRole.USER : AiRole.ASSISTANT;
         const name = msg.fromMe ? capitalizeString(chatCfg.prompt_name) : (await getContactName(msg));
 
         const content: Array<AiContent> = [];
-        if (isOther) content.push({type: 'text', value: `<Tipo de mensaje no procesable: {msg.type:"${msg.type}"${msg.body?', msg.body:"'+msg.body+'"':''}}>`});
+        if (isOther) content.push({type: 'text', value: getUnsupportedMessage(msg)});
         if (isImage && media) content.push({type: 'image', value: media.data, media_type: media.mimetype});
-        if (isImage && !media) content.push({type: 'text', value: '<Imagen no procesada>'});
-        if (isAudio && media) {
-          const transcriptionPromise = this.transcribeVoice(media, msg);
-          transcriptionPromises.push({index: messageList.length, promise: transcriptionPromise});
+        if (isImage && !media) content.push({type: 'text', value: '<Unprocessed image>'});
+        if (isAudio && media && !cachedMessage) {
+          transcriptionPromises.push({index: messageList.length, promise: this.transcribeVoice(media, msg)});
           content.push({type: 'text', value: '<Transcribiendo mensaje de voz...>'});
         }
+        if (isAudio && cachedMessage) content.push({type: 'text', value: cachedMessage});
         if (msg.body && !isOther) content.push({type: 'text', value: '[Text]' + msg.body});
 
         messageList.push({role: role, name: name, content: content});
@@ -361,16 +361,15 @@ export class Beltranus {
 
     // If no new messages are present, return without action
     if (messageList.length == 0) return;
-    messageList = messageList.reverse();
 
     // Send the message and return the text response
     logger.debug(`Sending Messages to "${chatCfg.prompt_name}" profile. Processed Messages: ${processedMessages}`);
     // Send the message and return the text response
     if (this.aiConfig.aiLanguage == AiLanguage.OPENAI) {
-      const convertedMessageList: ChatCompletionMessageParam[] = this.convertIaMessagesLang(messageList, AiLanguage.OPENAI) as ChatCompletionMessageParam[];
+      const convertedMessageList: ChatCompletionMessageParam[] = this.convertIaMessagesLang(messageList.reverse(), AiLanguage.OPENAI) as ChatCompletionMessageParam[];
       return await this.chatGpt.sendMessages(convertedMessageList, promptText, chatCfg.ia_model, chatCfg.maxtokens);
     } else if (this.aiConfig.aiLanguage == AiLanguage.ANTHROPIC) {
-      const convertedMessageList: MessageParam[] = this.convertIaMessagesLang(messageList, AiLanguage.ANTHROPIC) as MessageParam[];
+      const convertedMessageList: MessageParam[] = this.convertIaMessagesLang(messageList.reverse(), AiLanguage.ANTHROPIC) as MessageParam[];
       return await this.claude.sendChat(convertedMessageList, promptText, isPersonal? ClaudeModel.OPUS: this.aiConfig.model);
     }
   }
@@ -643,6 +642,9 @@ export class Beltranus {
         })
         return chatgptMessageList;
 
+      case AiLanguage.DEEPSEEK:
+
+
       default:
         return [];
     }
@@ -679,5 +681,9 @@ export class Beltranus {
       logger.error(`Error transcribing voice message: ${error.message}`);
       return '<Error transcribiendo el mensaje de voz>';
     }
+  }
+
+  private getCachedMessage(msg: Message){
+    return this.cache.get<string>(msg.id._serialized);
   }
 }
