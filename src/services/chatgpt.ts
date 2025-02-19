@@ -63,6 +63,7 @@ export class ChatGTP {
     logger.debug('[ChatGTP->sendMessages] Completion Response:');
     logger.debug(completion.choices[0]);
     logger.debug('Totals Tokens used:'+ completion.usage?.total_tokens);
+    logger.info(`PromptTokens: ${completion.usage.prompt_tokens}. CachedTokens: ${completion.usage.prompt_tokens_details.cached_tokens}. CompletionTokens: ${completion.usage.completion_tokens}. Totaltokens: ${completion.usage?.total_tokens}`)
 
     return completion.choices[0].message?.content || '';
   }
